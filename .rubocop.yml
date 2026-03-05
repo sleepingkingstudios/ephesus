@@ -8,6 +8,9 @@ AllCops:
   TargetRubyVersion: 4.0
   NewCops: enable
   Exclude:
+    - exploration.rb
+    - monsters.rb
+    - run.rb
     - gemfiles/*
     - tmp/**/*
     - vendor/**/*
