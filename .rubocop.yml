@@ -27,6 +27,21 @@ Layout/LineLength:
 Naming/RescuedExceptionsVariableName:
   PreferredName: exception
 
+RSpec/BeNil:
+  Enabled: false
+
+RSpec/Eq:
+  Enabled: false
+
+RSpec/HookArgument:
+  EnforcedStyle: example
+
+RSpec/IncludeExamples:
+  Enabled: false
+
+RSpec/NestedGroups:
+  Max: 5
+
 Style/AccessorGrouping:
   EnforcedStyle: separated
 
