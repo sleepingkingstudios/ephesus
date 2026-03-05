@@ -1,0 +1,58 @@
+---
+# Namespace for handling notifications and generating output messages.
+#
+# Each nested child key should map to a Notification type.
+#
+# - If the value for the type is a String, it is treated as a template. Raw
+#   template values can only use exact wildcard values, and cannot look up
+#   domain data.
+# - If the value is a Hash with key "template", then the value of the "template"
+#   key is used to generate the output, while remaining keys can be used to
+#   look up domain data for the named wildcard.
+#
+# If the value is a Hash with key "self", then each value must be a String or
+# Hash obeying the above rules, or false. Which value is used depends on the
+# identity of the current user versus the original actor. Value keys are:
+#
+# - self (required): The message to display when the notification originates
+#   from the current user.
+# - agent: The message to display when the notification originates from a
+#   non-user actor.
+# - user: The message to display when the notification originates from a
+#   different user.
+# - other: Catch-all for notifications from any other actor.
+notifications:
+  exploration:
+    commands:
+      look:
+        self:
+          template:  "%<full_desc>"
+          full_desc: "exploration.nodes.%<area>.%<node>.full_desc"
+        user: "%<user_name> looked around."
+        other: false
+
+# Namespace for self-structured domain data.
+exploration:
+  nodes:
+    hollow_town:
+      the_old_church:
+        short_desc: the old church
+        full_desc: |
+          This weathered place of worship has seen better days, its torches
+          unlit and tapestries faded to mottled grey. Behind the altar, an open
+          skylight allows the moon's radiance to cascade down onto a marble
+          statue of the legendary beast Cresselia. Of the altar itself, dark
+          stone with unidentified stains, little is best said.
+      town_square:
+        short_desc: the town square of Hollow Town
+        full_desc: |
+          The full moon looms over the picturesque hamlet of Hollow Town,
+          bathing its quaint houses in a pallid, unearthly light. The uneven
+          cobblestones of the square seem to paint a jagged smile in darker
+          rock, while the crooked iron fence that lines the square is topped
+          with a line of sharp-looking spikes. Villagers in hooded cloaks hurry
+          to and fro on their silent, furtive business.
+        edges:
+          the_old_church: |
+            A stone church in the gothic style, now visibly crumbling. Wild
+            Murkrow roost amidst the gargoyles.
