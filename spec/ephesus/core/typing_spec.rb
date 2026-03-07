@@ -25,6 +25,46 @@ RSpec.describe Ephesus::Core::Typing do
       -> { be == expected }
   end
 
+  describe '::FORMAT' do
+    let(:format) { described_class::FORMAT }
+
+    include_examples 'should define immutable constant',
+      :FORMAT,
+      -> { an_instance_of(Regexp) }
+
+    describe 'with an empty String' do
+      it { expect(format).not_to match '' }
+    end
+
+    describe 'with an lowercase String' do
+      it { expect(format).to match 'abc' }
+    end
+
+    describe 'with an lowercase String with underscores' do
+      it { expect(format).to match 'abc_def' }
+    end
+
+    describe 'with an String with numbers' do
+      it { expect(format).not_to match 'abc1' }
+    end
+
+    describe 'with an String with uppercase letters' do
+      it { expect(format).not_to match 'Abc' }
+    end
+
+    describe 'with an String with symbols' do
+      it { expect(format).not_to match 'abc?' }
+    end
+
+    describe 'with a period-separated string' do
+      it { expect(format).to match 'abc.def.ghi' }
+    end
+
+    describe 'with a colon-separated string' do
+      it { expect(format).not_to match 'abc:def:ghi' }
+    end
+  end
+
   describe '.default_type_for' do
     let(:default_type) { concern.default_type_for(described_class) }
 
@@ -179,6 +219,92 @@ RSpec.describe Ephesus::Core::Typing do
 
         it { expect(described_class.type).to be == expected }
       end
+    end
+  end
+
+  describe '.validate_type' do
+    it { expect(concern).to respond_to(:validate_type).with(1).argument }
+
+    define_method :tools do
+      SleepingKingStudios::Tools::Toolbelt.instance
+    end
+
+    describe 'with nil' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as: 'type')
+      end
+
+      it 'should raise an exception' do
+        expect { concern.validate_type(nil) }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an Object' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:name, as: 'type')
+      end
+
+      it 'should raise an exception' do
+        expect { concern.validate_type(Object.new.freeze) }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an empty String' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as: 'type')
+      end
+
+      it 'should raise an exception' do
+        expect { concern.validate_type('') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an empty Symbol' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as: 'type')
+      end
+
+      it 'should raise an exception' do
+        expect { concern.validate_type(:'') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an invalid String' do
+      let(:error_message) do
+        'type must be a lowercase underscored string separated by periods'
+      end
+
+      it 'should raise an exception' do
+        expect { concern.validate_type('InvalidFormat') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an invalid Symbol' do
+      let(:error_message) do
+        'type must be a lowercase underscored string separated by periods'
+      end
+
+      it 'should raise an exception' do
+        expect { concern.validate_type(:'invalid-format') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with a valid String' do
+      let(:type) { 'spec.custom_type' }
+
+      it { expect(concern.validate_type(type)).to be == type }
+    end
+
+    describe 'with a valid Symbol' do
+      let(:type) { :'spec.custom_type' }
+
+      it { expect(concern.validate_type(type)).to be == type.to_s }
     end
   end
 end

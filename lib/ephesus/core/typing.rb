@@ -16,6 +16,9 @@ module Ephesus::Core
     EXCLUDED_PATTERN = /_?(#{EXCLUSIONS.join('|')})\z/
     private_constant :EXCLUDED_PATTERN
 
+    # Format used to validate type identifiers.
+    FORMAT = /\A[a-z_]+(\.[a-z_]+)*\z/
+
     # Class methods to extend when including Typing in a Class or Module.
     module ClassMethods
       # The type identifier for the class.
@@ -77,6 +80,29 @@ module Ephesus::Core
           .split('::')
           .map { |str| normalize_partial_name(str) }
           .then { |ary| join_names(*ary) }
+      end
+
+      # Verifies that the given type is a valid type identifier.
+      #
+      # If the given value is not a properly formatted String, raises an
+      # ArgumentError.
+      #
+      # @param type [Object] the type to validate.
+      #
+      # @return [String] the validated type.
+      def validate_type(type)
+        tools.assertions.validate_name(type, as: 'type')
+
+        message =
+          'type must be a lowercase underscored string separated by periods'
+
+        tools.assertions.validate_matches(
+          type.to_s,
+          expected: FORMAT,
+          message:
+        )
+
+        type.to_s
       end
 
       private
