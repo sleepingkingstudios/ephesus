@@ -16,6 +16,11 @@ SleepingKingStudios::Tools.initializer.call
 
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
+  config.extend  RSpec::SleepingKingStudios::Concerns::ExampleConstants
+  config.include RSpec::SleepingKingStudios::Concerns::Toolbelt
+  config.include RSpec::SleepingKingStudios::Deferred::Consumer
+  config.include RSpec::SleepingKingStudios::Examples::PropertyExamples
+
   config.disable_monkey_patching!
 
   # This allows you to limit a spec run to individual examples or groups
