@@ -111,6 +111,108 @@ RSpec.describe Ephesus::Core::Command do
     end
   end
 
+  describe '#notify' do
+    let(:error_message) do
+      "uninitialized constant #{described_class.name}::Notification"
+    end
+
+    it 'should define the private method' do
+      expect(command)
+        .to respond_to(:notify, true)
+        .with(0..1).arguments
+        .and_any_keywords
+    end
+
+    it 'should raise an exception' do
+      expect { command.send(:notify) }
+        .to raise_error NameError, error_message
+    end
+
+    describe 'with a notification name' do
+      let(:error_message) do
+        "uninitialized constant #{described_class.name}::FailureNotification"
+      end
+
+      it 'should raise an exception' do
+        expect { command.send(:notify, :failure) }
+          .to raise_error NameError, error_message
+      end
+    end
+
+    wrap_deferred 'with a custom command class' do
+      let(:implementation) do
+        ->(**) { notify(message: 'Ok!') }
+      end
+      let(:error_message) do
+        "uninitialized constant #{described_class.name}::Notification"
+      end
+
+      it 'should raise an exception' do
+        expect { command.call(event:, state:) }
+          .to raise_error NameError, error_message
+      end
+
+      context 'when the command class defines the notification' do
+        let(:expected) do
+          [
+            [
+              :notify,
+              described_class::Notification.new(message: 'Ok!')
+            ]
+          ]
+        end
+
+        before(:example) do
+          described_class.const_set(:Notification, Data.define(:message))
+        end
+
+        it 'should add the notification to side effects' do
+          command.call(event:, state:)
+
+          expect(command.side_effects).to be == expected
+        end
+      end
+
+      describe 'with a notification name' do
+        let(:implementation) do
+          ->(**) { notify(:failure, message: 'Oh no!') }
+        end
+        let(:error_message) do
+          "uninitialized constant #{described_class.name}::FailureNotification"
+        end
+
+        it 'should raise an exception' do
+          expect { command.call(event:, state:) }
+            .to raise_error NameError, error_message
+        end
+
+        context 'when the command class defines the notification' do
+          let(:expected) do
+            [
+              [
+                :notify,
+                described_class::FailureNotification.new(message: 'Oh no!')
+              ]
+            ]
+          end
+
+          before(:example) do
+            described_class.const_set(
+              :FailureNotification,
+              Data.define(:message)
+            )
+          end
+
+          it 'should add the notification to side effects' do
+            command.call(event:, state:)
+
+            expect(command.side_effects).to be == expected
+          end
+        end
+      end
+    end
+  end
+
   describe '#side_effects' do
     include_examples 'should define reader', :side_effects
 

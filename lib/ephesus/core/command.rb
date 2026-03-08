@@ -39,6 +39,13 @@ module Ephesus::Core
 
     private
 
+    def notify(name = 'Notification', **)
+      name = tools.string_tools.camelize(name.to_s)
+      name += 'Notification' unless name.end_with?('Notification')
+
+      side_effects << [:notify, self.class.const_get(name).new(**)]
+    end
+
     def success(value = nil)
       return super if value
 
@@ -46,5 +53,7 @@ module Ephesus::Core
 
       super([state, *side_effects])
     end
+
+    def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
   end
 end
