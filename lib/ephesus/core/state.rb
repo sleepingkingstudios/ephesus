@@ -107,6 +107,9 @@ module Ephesus::Core
       path.to_s.split('.').reduce(@state) { |data, key| get_item(data, key) }
     end
 
+    # Generates a "pretty" human-readable representation of the state.
+    def pretty_print(pp) = pp(@state) # rubocop:disable Lint/UnusedMethodArgument
+
     # Assigns the value at the given scoped path.
     #
     # @param path [String] the scoped path. Must be a lowercase, underscored
