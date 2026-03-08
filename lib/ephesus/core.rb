@@ -6,6 +6,7 @@ module Ephesus
   module Core
     autoload :Event,  'ephesus/core/event'
     autoload :Events, 'ephesus/core/events'
+    autoload :State,  'ephesus/core/state'
     autoload :Typing, 'ephesus/core/typing'
   end
 end
