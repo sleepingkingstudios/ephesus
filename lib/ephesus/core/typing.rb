@@ -88,13 +88,15 @@ module Ephesus::Core
       # ArgumentError.
       #
       # @param type [Object] the type to validate.
+      # @param as [String] the label used to generate error messages. Defaults
+      #   to "type".
       #
       # @return [String] the validated type.
-      def validate_type(type)
-        tools.assertions.validate_name(type, as: 'type')
+      def validate_type(type, as: 'type')
+        tools.assertions.validate_name(type, as:)
 
         message =
-          'type must be a lowercase underscored string separated by periods'
+          "#{as} must be a lowercase underscored string separated by periods"
 
         tools.assertions.validate_matches(
           type.to_s,

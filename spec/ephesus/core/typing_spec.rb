@@ -6,6 +6,10 @@ RSpec.describe Ephesus::Core::Typing do
   let(:concern)         { Ephesus::Core::Typing } # rubocop:disable RSpec/DescribedClass
   let(:described_class) { Spec::ClassWithType }
 
+  define_method :tools do
+    SleepingKingStudios::Tools::Toolbelt.instance
+  end
+
   example_class 'Spec::ClassWithType' do |klass|
     klass.include Ephesus::Core::Typing # rubocop:disable RSpec/DescribedClass
   end
@@ -223,75 +227,132 @@ RSpec.describe Ephesus::Core::Typing do
   end
 
   describe '.validate_type' do
-    it { expect(concern).to respond_to(:validate_type).with(1).argument }
+    let(:as) { 'type' }
 
-    define_method :tools do
-      SleepingKingStudios::Tools::Toolbelt.instance
+    it 'should define the method' do
+      expect(concern)
+        .to respond_to(:validate_type)
+        .with(1).argument
+        .and_keywords(:as)
     end
 
     describe 'with nil' do
       let(:error_message) do
-        tools.assertions.error_message_for(:presence, as: 'type')
+        tools.assertions.error_message_for(:presence, as:)
       end
 
       it 'should raise an exception' do
         expect { concern.validate_type(nil) }
           .to raise_error ArgumentError, error_message
       end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { concern.validate_type(nil, as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
     end
 
     describe 'with an Object' do
       let(:error_message) do
-        tools.assertions.error_message_for(:name, as: 'type')
+        tools.assertions.error_message_for(:name, as:)
       end
 
       it 'should raise an exception' do
         expect { concern.validate_type(Object.new.freeze) }
           .to raise_error ArgumentError, error_message
       end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { concern.validate_type(Object.new.freeze, as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
     end
 
     describe 'with an empty String' do
       let(:error_message) do
-        tools.assertions.error_message_for(:presence, as: 'type')
+        tools.assertions.error_message_for(:presence, as:)
       end
 
       it 'should raise an exception' do
         expect { concern.validate_type('') }
           .to raise_error ArgumentError, error_message
       end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { concern.validate_type('', as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
     end
 
     describe 'with an empty Symbol' do
       let(:error_message) do
-        tools.assertions.error_message_for(:presence, as: 'type')
+        tools.assertions.error_message_for(:presence, as:)
       end
 
       it 'should raise an exception' do
         expect { concern.validate_type(:'') }
           .to raise_error ArgumentError, error_message
       end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { concern.validate_type(:'', as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
     end
 
     describe 'with an invalid String' do
       let(:error_message) do
-        'type must be a lowercase underscored string separated by periods'
+        "#{as} must be a lowercase underscored string separated by periods"
       end
 
       it 'should raise an exception' do
         expect { concern.validate_type('InvalidFormat') }
           .to raise_error ArgumentError, error_message
       end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { concern.validate_type('InvalidFormat', as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
     end
 
     describe 'with an invalid Symbol' do
       let(:error_message) do
-        'type must be a lowercase underscored string separated by periods'
+        "#{as} must be a lowercase underscored string separated by periods"
       end
 
       it 'should raise an exception' do
         expect { concern.validate_type(:'invalid-format') }
           .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { concern.validate_type(:'invalid-format', as:) }
+            .to raise_error ArgumentError, error_message
+        end
       end
     end
 
