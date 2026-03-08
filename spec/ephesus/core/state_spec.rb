@@ -21,6 +21,199 @@ RSpec.describe Ephesus::Core::State do
 
   let(:initial_state) { {} }
 
+  describe '::FORMAT' do
+    let(:format) { described_class::FORMAT }
+
+    include_examples 'should define immutable constant',
+      :FORMAT,
+      -> { an_instance_of(Regexp) }
+
+    describe 'with an empty String' do
+      it { expect(format).not_to match '' }
+    end
+
+    describe 'with a lowercase String' do
+      it { expect(format).to match 'abc' }
+    end
+
+    describe 'with a lowercase String with dashes' do
+      it { expect(format).to match 'abc-def' }
+    end
+
+    describe 'with a lowercase String with underscores' do
+      it { expect(format).to match 'abc_def' }
+    end
+
+    describe 'with a String with leading numbers' do
+      it { expect(format).to match '1abc' }
+    end
+
+    describe 'with a String with trailing numbers' do
+      it { expect(format).to match 'abc1' }
+    end
+
+    describe 'with a String with uppercase letters' do
+      it { expect(format).not_to match 'Abc' }
+    end
+
+    describe 'with a String with symbols' do
+      it { expect(format).not_to match 'abc?' }
+    end
+
+    describe 'with a period-separated string' do
+      it { expect(format).to match 'abc.def.ghi' }
+    end
+
+    describe 'with a colon-separated string' do
+      it { expect(format).not_to match 'abc:def:ghi' }
+    end
+  end
+
+  describe '.validate_path' do
+    let(:as) { 'path' }
+
+    it 'should define the method' do
+      expect(described_class)
+        .to respond_to(:validate_path)
+        .with(1).argument
+        .and_keywords(:as)
+    end
+
+    describe 'with nil' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as:)
+      end
+
+      it 'should raise an exception' do
+        expect { described_class.validate_path(nil) }
+          .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'absolute_path' }
+
+        it 'should raise an exception' do
+          expect { described_class.validate_path(nil, as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+    end
+
+    describe 'with an Object' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:name, as:)
+      end
+
+      it 'should raise an exception' do
+        expect { described_class.validate_path(Object.new.freeze) }
+          .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'absolute_path' }
+
+        it 'should raise an exception' do
+          expect { described_class.validate_path(Object.new.freeze, as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+    end
+
+    describe 'with an empty String' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as:)
+      end
+
+      it 'should raise an exception' do
+        expect { described_class.validate_path('') }
+          .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'event_type' }
+
+        it 'should raise an exception' do
+          expect { described_class.validate_path('', as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+    end
+
+    describe 'with an empty Symbol' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as:)
+      end
+
+      it 'should raise an exception' do
+        expect { described_class.validate_path(:'') }
+          .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'absolute_path' }
+
+        it 'should raise an exception' do
+          expect { described_class.validate_path(:'', as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+    end
+
+    describe 'with an invalid String' do
+      let(:error_message) do
+        "#{as} must be sequences of lowercase letters, digits, underscores, " \
+          'or dashes, separated by periods'
+      end
+
+      it 'should raise an exception' do
+        expect { described_class.validate_path('InvalidFormat') }
+          .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'absolute_path' }
+
+        it 'should raise an exception' do
+          expect { described_class.validate_path('InvalidFormat', as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+    end
+
+    describe 'with an invalid Symbol' do
+      let(:error_message) do
+        "#{as} must be sequences of lowercase letters, digits, underscores, " \
+          'or dashes, separated by periods'
+      end
+
+      it 'should raise an exception' do
+        expect { described_class.validate_path(:InvalidFormat) }
+          .to raise_error ArgumentError, error_message
+      end
+
+      describe 'with as: value' do
+        let(:as) { 'absolute_path' }
+
+        it 'should raise an exception' do
+          expect { described_class.validate_path(:InvalidFormat, as:) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+    end
+
+    describe 'with a valid String' do
+      let(:type) { 'spec.custom_type' }
+
+      it { expect(described_class.validate_path(type)).to be == type }
+    end
+
+    describe 'with a valid Symbol' do
+      let(:type) { :'spec.custom_type' }
+
+      it { expect(described_class.validate_path(type)).to be == type.to_s }
+    end
+  end
+
   describe '.new' do
     it { expect(described_class).to be_constructible.with(1).argument }
 
@@ -376,7 +569,8 @@ RSpec.describe Ephesus::Core::State do
 
     describe 'with path: an invalid String' do
       let(:error_message) do
-        'path must be a lowercase underscored string separated by periods'
+        'path must be sequences of lowercase letters, digits, underscores, ' \
+          'or dashes, separated by periods'
       end
 
       it 'should raise an exception' do
@@ -387,11 +581,12 @@ RSpec.describe Ephesus::Core::State do
 
     describe 'with path: an invalid Symbol' do
       let(:error_message) do
-        'path must be a lowercase underscored string separated by periods'
+        'path must be sequences of lowercase letters, digits, underscores, ' \
+          'or dashes, separated by periods'
       end
 
       it 'should raise an exception' do
-        expect { state.set(:'invalid-format', value) }
+        expect { state.set(:InvalidFormat, value) }
           .to raise_error ArgumentError, error_message
       end
     end
@@ -434,7 +629,8 @@ RSpec.describe Ephesus::Core::State do
     wrap_deferred 'when initialized with an initial state' do
       describe 'with path: an invalid String' do
         let(:error_message) do
-          'path must be a lowercase underscored string separated by periods'
+          'path must be sequences of lowercase letters, digits, underscores, ' \
+            'or dashes, separated by periods'
         end
 
         it 'should raise an exception' do
@@ -445,11 +641,12 @@ RSpec.describe Ephesus::Core::State do
 
       describe 'with path: an invalid Symbol' do
         let(:error_message) do
-          'path must be a lowercase underscored string separated by periods'
+          'path must be sequences of lowercase letters, digits, underscores, ' \
+            'or dashes, separated by periods'
         end
 
         it 'should raise an exception' do
-          expect { state.set(:'invalid-format', value) }
+          expect { state.set(:InvalidFormat, value) }
             .to raise_error ArgumentError, error_message
         end
       end

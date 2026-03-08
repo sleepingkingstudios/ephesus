@@ -5,8 +5,43 @@ require 'ephesus/core'
 module Ephesus::Core
   # Defines an immutable-compatible interface for accessing and updating state.
   class State
+    # Format used to validate state paths.
+    FORMAT = /\A[a-z0-9\-_]+(\.[a-z0-9\-_]+)*\z/
+
     UNDEFINED = SleepingKingStudios::Tools::UNDEFINED
     private_constant :UNDEFINED
+
+    class << self
+      # Verifies that the given path is a valid state path.
+      #
+      # If the given value is not a properly formatted String, raises an
+      # ArgumentError.
+      #
+      # @param path [Object] the path to validate.
+      # @param as [String] the label used to generate error messages. Defaults
+      #   to "path".
+      #
+      # @return [String] the validated path.
+      def validate_path(path, as: 'path')
+        tools.assertions.validate_name(path, as:)
+
+        message =
+          "#{as} must be sequences of lowercase letters, digits, " \
+          'underscores, or dashes, separated by periods'
+
+        tools.assertions.validate_matches(
+          path.to_s,
+          expected: FORMAT,
+          message:
+        )
+
+        path.to_s
+      end
+
+      private
+
+      def tools = SleepingKingStudios::Tools::Toolbelt.instance
+    end
 
     # @overload initialize(initial_state)
     #   @param initial_state [Hash{String => Object}] the initial state value.
@@ -83,7 +118,7 @@ module Ephesus::Core
     #
     # @return [State] an instance of the State class
     def set(path, value, intermediate_path: false)
-      Ephesus::Core::Typing.validate_type(path, as: 'path')
+      Ephesus::Core::State.validate_path(path, as: 'path')
 
       *path, key = path.to_s.split('.')
 

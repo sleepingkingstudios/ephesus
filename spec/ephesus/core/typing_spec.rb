@@ -40,23 +40,23 @@ RSpec.describe Ephesus::Core::Typing do
       it { expect(format).not_to match '' }
     end
 
-    describe 'with an lowercase String' do
+    describe 'with a lowercase String' do
       it { expect(format).to match 'abc' }
     end
 
-    describe 'with an lowercase String with underscores' do
+    describe 'with a lowercase String with underscores' do
       it { expect(format).to match 'abc_def' }
     end
 
-    describe 'with an String with numbers' do
+    describe 'with a String with numbers' do
       it { expect(format).not_to match 'abc1' }
     end
 
-    describe 'with an String with uppercase letters' do
+    describe 'with a String with uppercase letters' do
       it { expect(format).not_to match 'Abc' }
     end
 
-    describe 'with an String with symbols' do
+    describe 'with a String with symbols' do
       it { expect(format).not_to match 'abc?' }
     end
 
