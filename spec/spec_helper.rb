@@ -7,6 +7,8 @@ unless ENV['COVERAGE'] == 'false'
 end
 
 require 'byebug'
+require 'cuprum/rspec/be_callable'
+require 'cuprum/rspec/be_a_result'
 require 'rspec/sleeping_king_studios/all'
 
 # Isolated namespace for defining spec-only or transient objects.
@@ -16,6 +18,7 @@ SleepingKingStudios::Tools.initializer.call
 
 # See https://rubydoc.info/gems/rspec-core/RSpec/Core/Configuration
 RSpec.configure do |config|
+  config.include Cuprum::RSpec::Matchers
   config.extend  RSpec::SleepingKingStudios::Concerns::ExampleConstants
   config.include RSpec::SleepingKingStudios::Concerns::Toolbelt
   config.include RSpec::SleepingKingStudios::Deferred::Consumer
