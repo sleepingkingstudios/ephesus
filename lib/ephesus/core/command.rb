@@ -46,6 +46,8 @@ module Ephesus::Core
       side_effects << [:notify, self.class.const_get(name).new(**)]
     end
 
+    def push_event(event) = side_effects << [:push_event, event]
+
     def success(value = nil)
       return super if value
 
