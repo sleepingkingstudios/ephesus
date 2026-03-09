@@ -213,6 +213,27 @@ RSpec.describe Ephesus::Core::Command do
     end
   end
 
+  describe '#push_event' do
+    let(:pushed_event) { Ephesus::Core::Event.new }
+
+    it { expect(command).to respond_to(:push_event, true).with(1).argument }
+
+    wrap_deferred 'with a custom command class' do
+      let(:implementation) do
+        event = pushed_event
+
+        ->(**) { push_event(event) }
+      end
+      let(:expected) { [[:push_event, pushed_event]] }
+
+      it 'should add the event to side effects' do
+        command.call(event:, state:)
+
+        expect(command.side_effects).to be == expected
+      end
+    end
+  end
+
   describe '#side_effects' do
     include_examples 'should define reader', :side_effects
 
