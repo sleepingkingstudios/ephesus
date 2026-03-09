@@ -761,4 +761,43 @@ RSpec.describe Ephesus::Core::State do
       end
     end
   end
+
+  describe '#to_h' do
+    it { expect(state).to respond_to(:to_h).with(0).arguments }
+
+    it { expect(state.to_h).to be == initial_state }
+
+    it 'should return a copy of the state' do
+      copy = state.to_h
+
+      expect { copy['checksum'] = 0xdeadbeef }.not_to change(state, :to_h)
+    end
+
+    context 'when the state is updated' do
+      let(:expected) { initial_state.merge('checksum' => 0xdeadbeef) }
+
+      before(:example) { state.set('checksum', 0xdeadbeef) }
+
+      it { expect(state.to_h).to be == expected }
+    end
+
+    wrap_deferred 'when initialized with an initial state' do
+      it { expect(state.to_h).to be == initial_state }
+
+      it 'should return a deep copy of the state' do
+        copy = state.to_h
+
+        expect { copy['path']['to']['other_value'] = :other }
+          .not_to change(state, :to_h)
+      end
+
+      context 'when the state is updated' do
+        let(:expected) { initial_state.merge('checksum' => 0xdeadbeef) }
+
+        before(:example) { state.set('checksum', 0xdeadbeef) }
+
+        it { expect(state.to_h).to be == expected }
+      end
+    end
+  end
 end

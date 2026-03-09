@@ -132,6 +132,9 @@ module Ephesus::Core
       self
     end
 
+    # @return [Hash] a Hash representation of the state.
+    def to_h = tools.hash_tools.deep_dup(@state)
+
     private
 
     def fetch_item(data, key, default = UNDEFINED, &)
