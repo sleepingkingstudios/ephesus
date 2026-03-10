@@ -248,6 +248,42 @@ RSpec.describe Ephesus::Core::State do
     end
   end
 
+  describe '#==' do
+    describe 'with nil' do
+      it { expect(state == nil).to be false } # rubocop:disable Style/NilComparison
+    end
+
+    describe 'with an Object' do
+      it { expect(state == Object.new.freeze).to be false }
+    end
+
+    describe 'with a State with non-matching state' do
+      let(:other_state) { { 'checksum' => 0xdeadbeef } }
+
+      it { expect(state == described_class.new(other_state)).to be false }
+    end
+
+    describe 'with a State with matching state' do
+      it { expect(state == described_class.new({})).to be true }
+    end
+
+    wrap_deferred 'when initialized with an initial state' do
+      describe 'with a State with empty state' do
+        it { expect(state == described_class.new({})).to be false }
+      end
+
+      describe 'with a State with non-matching state' do
+        let(:other_state) { { 'checksum' => 0xdeadbeef } }
+
+        it { expect(state == described_class.new(other_state)).to be false }
+      end
+
+      describe 'with a State with matching state' do
+        it { expect(state == described_class.new(initial_state)).to be true }
+      end
+    end
+  end
+
   describe '#fetch' do
     deferred_examples 'should raise a KeyError' do |expected_key = nil|
       let(:error_message) do
