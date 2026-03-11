@@ -116,6 +116,27 @@ module Ephesus::Core
     # @return [Ephesus::Core::State] the current state for the scene.
     attr_reader :state
 
+    # Handles the next queued event.
+    #
+    # Finds and calls the event handler for the next queued event. That event
+    # may push additional events onto the event stack, in which case #call will
+    # continue to handle events until the event stack is empty.
+    #
+    # If the event queue is empty, does nothing.
+    #
+    # @return [self]
+    def call
+      event = event_queue.shift
+
+      return self unless event
+
+      handle_event(event)
+
+      handle_event(event) while (event = event_stack.pop)
+
+      self
+    end
+
     # Adds the event to the event queue for the scene.
     def enqueue_event(event) = event_queue << event
     alias enqueue enqueue_event

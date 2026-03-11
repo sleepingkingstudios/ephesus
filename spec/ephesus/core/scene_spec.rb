@@ -345,6 +345,199 @@ RSpec.describe Ephesus::Core::Scene do
     end
   end
 
+  describe '#call' do
+    let(:handled_events) { [] }
+
+    before(:example) do
+      # rubocop:disable RSpec/SubjectStub
+      allow(scene).to receive(:handle_event).and_wrap_original \
+      do |original, event|
+        handled_events << event
+
+        original.call(event)
+      end
+      # rubocop:enable RSpec/SubjectStub
+    end
+
+    it { expect(scene).to respond_to(:call).with(0).arguments }
+
+    context 'when there are no queued events' do
+      it { expect(scene.call).to be scene }
+
+      it 'should not handle any events' do
+        scene.call
+
+        expect(handled_events).to be == []
+      end
+    end
+
+    wrap_deferred 'with a scene subclass' do
+      example_class 'Spec::IncrementCommand', Ephesus::Core::Command do |klass|
+        klass.const_set(:Event, Ephesus::Core::Event.define)
+
+        klass.define_method(:process) do |state:, **|
+          state.set('value', state.fetch('value', 0) + 1)
+        end
+      end
+
+      before(:example) do
+        described_class.handle_event Spec::IncrementCommand
+      end
+
+      context 'when there are no queued events' do
+        it { expect(scene.call).to be scene }
+
+        it 'should not handle any events' do
+          scene.call
+
+          expect(handled_events).to be == []
+        end
+      end
+
+      context 'when there is one queued event' do
+        let(:event) { Spec::IncrementCommand::Event.new }
+
+        before(:example) { scene.enqueue_event(event) }
+
+        it { expect(scene.call).to be scene }
+
+        it 'should remove the event from the queue' do
+          expect { scene.call }.to(
+            change { scene.send(:event_queue).size }.by(-1)
+          )
+        end
+
+        it 'should update the state' do
+          scene.call
+
+          expect(scene.state.get('value')).to be 1
+        end
+
+        it 'should handle the event' do
+          scene.call
+
+          expect(handled_events).to be == [event]
+        end
+      end
+
+      context 'when there are many queued events' do
+        let(:events) do
+          [
+            Spec::AddCommand::Event.new(1),
+            Spec::AddCommand::Event.new(2),
+            Spec::AddCommand::Event.new(3)
+          ]
+        end
+
+        example_class 'Spec::AddCommand', Ephesus::Core::Command do |klass|
+          klass.const_set(:Event, Ephesus::Core::Event.define(:amount))
+
+          klass.define_method(:process) do |event:, state:|
+            state.set('value', state.fetch('value', 0) + event.amount)
+          end
+        end
+
+        before(:example) do
+          described_class.handle_event Spec::AddCommand
+
+          events.each { |event| scene.enqueue_event(event) }
+        end
+
+        it { expect(scene.call).to be scene }
+
+        it 'should remove the event from the queue', :aggregate_failures do
+          expect { scene.call }.to(
+            change { scene.send(:event_queue).size }.by(-1)
+          )
+
+          expect(scene.send(:event_queue)).to be == events[1..]
+        end
+
+        it 'should update the state' do
+          scene.call
+
+          expect(scene.state.get('value')).to be 1
+        end
+
+        it 'should handle the event' do
+          scene.call
+
+          expect(handled_events).to be == [events.first]
+        end
+      end
+
+      context 'when the handled events push events onto the stack' do
+        let(:initial_state)       { { 'value' => 2 } }
+        let(:constructor_options) { super().merge(state: initial_state) }
+        let(:event) do
+          Spec::MultiplyCommand::Event.new(amount: 3)
+        end
+        let(:expected_events) do
+          [
+            Spec::MultiplyCommand::Event.new(amount: 3),
+            Spec::AddCommand::Event.new(amount: 2),
+            Spec::IncrementCommand::Event.new,
+            Spec::IncrementCommand::Event.new,
+            Spec::AddCommand::Event.new(amount: 2),
+            Spec::IncrementCommand::Event.new,
+            Spec::IncrementCommand::Event.new
+          ]
+        end
+
+        example_class 'Spec::AddCommand', Ephesus::Core::Command do |klass|
+          klass.const_set(:Event, Ephesus::Core::Event.define(:amount))
+
+          klass.define_method(:process) do |event:, **|
+            event.amount.times do
+              push_event(Spec::IncrementCommand::Event.new)
+            end
+
+            success
+          end
+        end
+
+        example_class 'Spec::MultiplyCommand', Ephesus::Core::Command do |klass|
+          klass.const_set(:Event, Ephesus::Core::Event.define(:amount))
+
+          klass.define_method(:process) do |event:, state:|
+            (event.amount - 1).times do
+              push_event(Spec::AddCommand::Event.new(state.get('value')))
+            end
+
+            success
+          end
+        end
+
+        before(:example) do
+          described_class.handle_event Spec::AddCommand
+          described_class.handle_event Spec::MultiplyCommand
+
+          scene.enqueue_event(event)
+        end
+
+        it { expect(scene.call).to be scene }
+
+        it 'should remove the event from the queue' do
+          expect { scene.call }.to(
+            change { scene.send(:event_queue).size }.by(-1)
+          )
+        end
+
+        it 'should update the state' do
+          scene.call
+
+          expect(scene.state.get('value')).to be 6
+        end
+
+        it 'should handle the event and all stack events' do
+          scene.call
+
+          expect(handled_events).to match expected_events
+        end
+      end
+    end
+  end
+
   describe '#enqueue_event' do
     let(:event) { Ephesus::Core::Event.new }
 
