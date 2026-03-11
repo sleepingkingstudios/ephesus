@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'observer'
+
 require 'ephesus/core'
 require 'ephesus/core/command'
 require 'ephesus/core/typing'
@@ -18,12 +20,17 @@ module Ephesus::Core
   # updated state and an optional list of side effects (such as notifying
   # listeners or pushing more events onto the stack). A failed result may also
   # return a list of side effects.
-  class Scene
+  class Scene # rubocop:disable Metrics/ClassLength
+    include Observable
+
     # Exception raised when setting a static option on an abstract class.
     class AbstractClassError < StandardError; end
 
     # Exception raised when a handler is not found for an event.
     class UnhandledEventError < StandardError; end
+
+    # Exception raised when a handler is not found for a side effect.
+    class UnhandledSideEffectError < StandardError; end
 
     class << self
       # @return [true, false] true if the class is an abstract class, otherwise
@@ -145,12 +152,61 @@ module Ephesus::Core
       result  = command.call(event:, state:)
 
       if result.success?
-        state, * = result.value
-
-        @state = state if state.is_a?(Ephesus::Core::State)
+        @state, side_effects = resolve_success(result.value)
+      else
+        side_effects = resolve_failure(result.value)
       end
 
+      handle_side_effects(side_effects)
+
       result
+    end
+
+    def handle_notify(notification)
+      changed
+
+      notify_observers(notification)
+    end
+
+    def handle_push_event(event)
+      event_stack << event
+    end
+
+    def handle_side_effect(side_effect, *details)
+      case side_effect
+      when :notify     then handle_notify(*details)
+      when :push_event then handle_push_event(*details)
+      else
+        raise UnhandledSideEffectError,
+          unhandled_side_effect_message_for(side_effect, details)
+      end
+    end
+
+    def handle_side_effects(side_effects)
+      side_effects&.each do |maybe_side_effect|
+        next unless maybe_side_effect.is_a?(Array)
+        next unless maybe_side_effect.first.is_a?(Symbol)
+
+        side_effect, *details = maybe_side_effect
+
+        handle_side_effect(side_effect, *details)
+      end
+    end
+
+    def resolve_failure(value)
+      value.is_a?(Array) ? value : nil
+    end
+
+    def resolve_success(value)
+      return value if value.is_a?(Ephesus::Core::State)
+
+      return @state unless value.is_a?(Array)
+
+      head, *tail = value
+
+      return [head, tail] if head.is_a?(Ephesus::Core::State)
+
+      [@state, [head, *tail]]
     end
 
     def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
@@ -160,6 +216,13 @@ module Ephesus::Core
       message = "no event handler found for event #{event.type}"
       message = "#{message} (#{data.inspect})" unless data.empty?
       message
+    end
+
+    def unhandled_side_effect_message_for(side_effect, details)
+      details_data = details.map(&:inspect).join(', ')
+
+      "no handler found for side effect #{side_effect.inspect} " \
+        "(#{details_data})"
     end
   end
 end

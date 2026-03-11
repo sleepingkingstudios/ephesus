@@ -43,6 +43,12 @@ RSpec.describe Ephesus::Core::Scene do
       -> { be_a(Class).and be < StandardError }
   end
 
+  describe '::UnhandledSideEffectError' do
+    include_examples 'should define constant',
+      :UnhandledSideEffectError,
+      -> { be_a(Class).and be < StandardError }
+  end
+
   describe '.abstract?' do
     it { expect(described_class).to respond_to(:abstract?).with(0).arguments }
 
@@ -406,6 +412,7 @@ RSpec.describe Ephesus::Core::Scene do
       context 'when the scene handles the event' do
         let(:command_class)  { Spec::CustomCommand }
         let(:implementation) { ->(**) {} }
+        let(:side_effects)   { [] }
 
         example_class 'Spec::CustomCommand', Ephesus::Core::Command do |klass|
           klass.define_method(:process, &implementation)
@@ -413,6 +420,10 @@ RSpec.describe Ephesus::Core::Scene do
 
         before(:example) do
           described_class.handle_event(event.type, command_class)
+
+          allow(scene).to receive(:handle_side_effect) do |side_effect, details| # rubocop:disable RSpec/SubjectStub
+            side_effects << [side_effect, *details]
+          end
         end
 
         it 'should initialize the command' do
@@ -436,6 +447,7 @@ RSpec.describe Ephesus::Core::Scene do
             .with(event:, state: scene.state)
         end
 
+        # rubocop:disable RSpec/NestedGroups
         context 'when the command returns a passing result' do
           let(:implementation) { ->(**) { { ok: true } } }
           let(:expected_value) { { ok: true } }
@@ -451,32 +463,106 @@ RSpec.describe Ephesus::Core::Scene do
               change { scene.state.to_h }
             )
           end
-        end
 
-        context 'when the command returns a passing result with a state' do
-          let(:implementation) do
-            state =
-              Ephesus::Core::State
-              .new(scene.state.to_h)
-              .set('checksum', 0xdeadbeef)
+          it 'should not handle any side effects' do
+            scene.send(:handle_event, event)
 
-            ->(**) { state }
-          end
-          let!(:expected_state) do
-            scene.state.to_h.merge('checksum' => 0xdeadbeef)
-          end
-          let(:expected_value) { Ephesus::Core::State.new(expected_state) }
-
-          it 'should return a passing result' do
-            expect(scene.send(:handle_event, event))
-              .to be_a_passing_result
-              .with_value(expected_value)
+            expect(side_effects).to be == []
           end
 
-          it 'should update the scene state' do
-            expect { scene.send(:handle_event, event) }.to(
-              change { scene.state.to_h }.to(be == expected_state)
-            )
+          context 'when the result has a state' do
+            let(:implementation) do
+              state =
+                Ephesus::Core::State
+                .new(scene.state.to_h)
+                .set('checksum', 0xdeadbeef)
+
+              ->(**) { state }
+            end
+            let!(:expected_state) do
+              scene.state.to_h.merge('checksum' => 0xdeadbeef)
+            end
+            let(:expected_value) { Ephesus::Core::State.new(expected_state) }
+
+            it 'should update the scene state' do
+              expect { scene.send(:handle_event, event) }.to(
+                change { scene.state.to_h }.to(be == expected_state)
+              )
+            end
+
+            it 'should not handle any side effects' do
+              scene.send(:handle_event, event)
+
+              expect(side_effects).to be == []
+            end
+          end
+
+          context 'when the result has a state and side effects' do
+            let(:implementation) do
+              state =
+                Ephesus::Core::State
+                .new(scene.state.to_h)
+                .set('checksum', 0xdeadbeef)
+
+              lambda do |**|
+                @state = state
+
+                side_effects << [:do_something]
+                side_effects << [:greet, 'programs']
+
+                success
+              end
+            end
+            let!(:expected_state) do
+              scene.state.to_h.merge('checksum' => 0xdeadbeef)
+            end
+            let(:expected_side_effects) do
+              [
+                %i[do_something],
+                [:greet, 'programs']
+              ]
+            end
+
+            it 'should update the scene state' do
+              expect { scene.send(:handle_event, event) }.to(
+                change { scene.state.to_h }.to(be == expected_state)
+              )
+            end
+
+            it 'should handle the side effects' do
+              scene.send(:handle_event, event)
+
+              expect(side_effects).to be == expected_side_effects
+            end
+          end
+
+          context 'when the result has only side effects' do
+            let(:implementation) do
+              lambda do |**|
+                side_effects << [:do_something]
+                side_effects << [:greet, 'programs']
+
+                success(side_effects)
+              end
+            end
+            let(:expected_side_effects) do
+              [
+                %i[do_something],
+                [:greet, 'programs']
+              ]
+            end
+
+            it 'should not update the scene state' do
+              expect { scene.send(:handle_event, event) }.not_to(
+                change { scene.state.to_h }
+              )
+            end
+
+            it 'should handle the side effects' do
+              scene.send(:handle_event, event)
+
+              expect(side_effects).to be == expected_side_effects
+            end
           end
         end
 
@@ -495,38 +581,195 @@ RSpec.describe Ephesus::Core::Scene do
               .to be_a_failing_result
               .with_error(expected_error)
           end
+
+          it 'should not handle any side effects' do
+            scene.send(:handle_event, event)
+
+            expect(side_effects).to be == []
+          end
+
+          context 'when the result has a state' do
+            let(:implementation) do
+              error = expected_error
+              state =
+                Ephesus::Core::State
+                .new(scene.state.to_h)
+                .set('checksum', 0xdeadbeef)
+
+              ->(**) { Cuprum::Result.new(value: state, error:) }
+            end
+            let!(:expected_state) do
+              scene.state.to_h.merge('checksum' => 0xdeadbeef)
+            end
+            let(:expected_value) { Ephesus::Core::State.new(expected_state) }
+
+            it 'should return a failing result' do
+              expect(scene.send(:handle_event, event))
+                .to be_a_failing_result
+                .with_value(expected_value)
+                .and_error(expected_error)
+            end
+
+            it 'should not update the scene state' do
+              expect { scene.send(:handle_event, event) }.not_to(
+                change { scene.state.to_h }
+              )
+            end
+
+            it 'should not handle any side effects' do
+              scene.send(:handle_event, event)
+
+              expect(side_effects).to be == []
+            end
+          end
+
+          context 'when the result has a state and side effects' do
+            let(:implementation) do
+              error = expected_error
+              state =
+                Ephesus::Core::State
+                .new(scene.state.to_h)
+                .set('checksum', 0xdeadbeef)
+
+              lambda do |**|
+                @state = state
+
+                side_effects << [:do_something]
+                side_effects << [:greet, 'programs']
+
+                Cuprum::Result.new(value: [state, *side_effects], error:)
+              end
+            end
+            let(:expected_side_effects) do
+              [
+                %i[do_something],
+                [:greet, 'programs']
+              ]
+            end
+
+            it 'should not update the scene state' do
+              expect { scene.send(:handle_event, event) }.not_to(
+                change { scene.state.to_h }
+              )
+            end
+
+            it 'should handle the side effects' do
+              scene.send(:handle_event, event)
+
+              expect(side_effects).to be == expected_side_effects
+            end
+          end
+
+          context 'when the result has only side effects' do
+            let(:implementation) do
+              error = expected_error
+
+              lambda do |**|
+                side_effects << [:do_something]
+                side_effects << [:greet, 'programs']
+
+                Cuprum::Result.new(value: [state, *side_effects], error:)
+              end
+            end
+            let(:expected_side_effects) do
+              [
+                %i[do_something],
+                [:greet, 'programs']
+              ]
+            end
+
+            it 'should not update the scene state' do
+              expect { scene.send(:handle_event, event) }.not_to(
+                change { scene.state.to_h }
+              )
+            end
+
+            it 'should handle the side effects' do
+              scene.send(:handle_event, event)
+
+              expect(side_effects).to be == expected_side_effects
+            end
+          end
+        end
+        # rubocop:enable RSpec/NestedGroups
+      end
+    end
+  end
+
+  describe '#handle_side_effect' do
+    it 'should define the private method' do
+      expect(scene)
+        .to respond_to(:handle_side_effect, true)
+        .with(1).argument
+        .and_unlimited_arguments
+    end
+
+    describe 'with an unhandled side effect' do
+      let(:side_effect) { :do_something }
+      let(:details) do
+        { this_is: 'something', therefore: 'we must do it' }
+      end
+      let(:error_message) do
+        "no handler found for side effect #{side_effect.inspect} " \
+          "(#{details.inspect})"
+      end
+
+      it 'should raise an exception' do
+        expect { scene.send(:handle_side_effect, side_effect, details) }.to(
+          raise_error(described_class::UnhandledSideEffectError, error_message)
+        )
+      end
+    end
+
+    describe 'with a :notify effect' do
+      let(:side_effect)  { :notify }
+      let(:notification) { Ephesus::Core::Event.new }
+      let(:observer)     { Spec::Observer.new }
+
+      example_class 'Spec::Observer' do |klass|
+        klass.define_method(:notifications) { @notifications ||= [] }
+
+        klass.define_method(:update) { |obj| notifications << obj }
+      end
+
+      before(:example) { scene.add_observer(observer) }
+
+      it 'should notify the observers' do
+        scene.send(:handle_side_effect, side_effect, notification)
+
+        expect(observer.notifications).to be == [notification]
+      end
+    end
+
+    describe 'with a :push_event effect' do
+      let(:side_effect) { :push_event }
+      let(:event) do
+        Spec::CustomEvent.new(message: 'Greetings, programs!')
+      end
+
+      example_constant 'Spec::CustomEvent' do
+        Ephesus::Core::Event.define(:message)
+      end
+
+      it 'should push the event to the #event_stack', :aggregate_failures do
+        expect { scene.send(:handle_side_effect, side_effect, event) }.to(
+          change { scene.send(:event_stack).count }.by(1)
+        )
+
+        expect(scene.send(:event_stack).last).to be == event
+      end
+
+      context 'when the scene has many stacked events' do
+        before(:example) do
+          3.times { scene.send(:event_stack).push(Ephesus::Core::Event.new) }
         end
 
-        context 'when the command returns a failing result with a state' do
-          let(:implementation) do
-            error = expected_error
-            state =
-              Ephesus::Core::State
-              .new(scene.state.to_h)
-              .set('checksum', 0xdeadbeef)
+        it 'should push the event to the #event_stack', :aggregate_failures do
+          expect { scene.send(:handle_side_effect, side_effect, event) }.to(
+            change { scene.send(:event_stack).count }.by(1)
+          )
 
-            ->(**) { Cuprum::Result.new(value: state, error:) }
-          end
-          let!(:expected_state) do
-            scene.state.to_h.merge('checksum' => 0xdeadbeef)
-          end
-          let(:expected_value) { Ephesus::Core::State.new(expected_state) }
-          let(:expected_error) do
-            Cuprum::Error.new(message: 'Something went wrong.')
-          end
-
-          it 'should return a failing result' do
-            expect(scene.send(:handle_event, event))
-              .to be_a_failing_result
-              .with_value(expected_value)
-              .and_error(expected_error)
-          end
-
-          it 'should not update the scene state' do
-            expect { scene.send(:handle_event, event) }.not_to(
-              change { scene.state.to_h }
-            )
-          end
+          expect(scene.send(:event_stack).last).to be == event
         end
       end
     end

@@ -31,4 +31,6 @@ Gem::Specification.new do |gem|
   ]
 
   gem.add_dependency 'cuprum', '~> 1.3', '>= 1.3.1'
+
+  gem.add_dependency 'observer', '< 1.0'
 end
