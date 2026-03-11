@@ -53,6 +53,16 @@ module Ephesus::Core
       @state = normalize ? normalize_state(state) : state
     end
 
+    # Compares the state with the other object.
+    #
+    # @param other [Object] the object to compare.
+    #
+    # @return [true, false] true if the other object is a State with identical
+    #   state; otherwise false.
+    def ==(other)
+      other.is_a?(Ephesus::Core::State) && to_h == other.to_h
+    end
+
     # @overload fetch(path)
     #   Retrieves the value at the given scoped path.
     #
@@ -131,6 +141,9 @@ module Ephesus::Core
 
       self
     end
+
+    # @return [Hash] a Hash representation of the state.
+    def to_h = tools.hash_tools.deep_dup(@state)
 
     private
 
