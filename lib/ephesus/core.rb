@@ -9,6 +9,5 @@ module Ephesus
     autoload :Messages, 'ephesus/core/messages'
     autoload :Scene,    'ephesus/core/scene'
     autoload :State,    'ephesus/core/state'
-    autoload :Typing,   'ephesus/core/typing'
   end
 end

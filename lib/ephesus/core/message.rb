@@ -4,7 +4,7 @@ require 'sleeping_king_studios/tools/toolbelt'
 require 'sleeping_king_studios/tools/toolbox/heritable_data'
 
 require 'ephesus/core'
-require 'ephesus/core/typing'
+require 'ephesus/core/messages/typing'
 
 module Ephesus::Core
   # Data class used to communicate and store changes across an application.
@@ -17,11 +17,11 @@ module Ephesus::Core
 
         if other.is_a?(Class)
           other.include(Ephesus::Core::Messages::Definitions)
-          other.include(Ephesus::Core::Typing)
+          other.include(Ephesus::Core::Messages::Typing)
         else
           other.define_singleton_method(:included) do |inner|
             inner.include(Ephesus::Core::Messages::Definitions)
-            inner.include(Ephesus::Core::Typing)
+            inner.include(Ephesus::Core::Messages::Typing)
           end
         end
       end

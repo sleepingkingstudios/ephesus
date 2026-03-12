@@ -3,12 +3,12 @@
 require 'cuprum'
 
 require 'ephesus/core'
-require 'ephesus/core/typing'
+require 'ephesus/core/messages/typing'
 
 module Ephesus::Core
   # Command class that handles an event for a scene.
   class Command < Cuprum::Command
-    include Ephesus::Core::Typing
+    include Ephesus::Core::Messages::Typing
 
     # @return [Ephesus::Core::Message] the handled event.
     attr_reader :event

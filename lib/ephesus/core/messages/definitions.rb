@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'ephesus/core/messages'
+require 'ephesus/core/messages/typing'
 
 module Ephesus::Core::Messages
   # Extends defining messages to allow setting a static type identifier.
@@ -19,7 +20,7 @@ module Ephesus::Core::Messages
         super(*symbols, &).tap do |data_class|
           next unless type
 
-          Ephesus::Core::Typing.validate_type(type)
+          Ephesus::Core::Messages::Typing.validate_type(type)
 
           data_class.const_set(:TYPE, type)
         end
