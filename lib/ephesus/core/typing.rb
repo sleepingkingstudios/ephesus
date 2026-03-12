@@ -11,7 +11,7 @@ module Ephesus::Core
     include SleepingKingStudios::Tools::Toolbox::Mixin
 
     # String patterns to exclude when occuring at the end of a name segment.
-    EXCLUSIONS = %w[action command event notification].freeze
+    EXCLUSIONS = %w[action command event message notification].freeze
 
     EXCLUDED_PATTERN = /_?(#{EXCLUSIONS.join('|')})\z/
     private_constant :EXCLUDED_PATTERN

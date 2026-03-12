@@ -20,6 +20,7 @@ RSpec.describe Ephesus::Core::Typing do
         action
         command
         event
+        message
         notification
       ]
     end
@@ -135,6 +136,15 @@ RSpec.describe Ephesus::Core::Typing do
       let(:expected)        { 'spec.custom' }
 
       example_class 'Spec::CustomEvent'
+
+      it { expect(default_type).to be == expected }
+    end
+
+    describe 'with a class with segment ending in "message"' do
+      let(:described_class) { Spec::CustomMessage }
+      let(:expected)        { 'spec.custom' }
+
+      example_class 'Spec::CustomMessage'
 
       it { expect(default_type).to be == expected }
     end

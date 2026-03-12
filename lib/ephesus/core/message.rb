@@ -8,7 +8,7 @@ require 'ephesus/core/typing'
 
 module Ephesus::Core
   # Data class used to communicate and store changes across an application.
-  Event = SleepingKingStudios::Tools::Toolbox::HeritableData.define do
+  Message = SleepingKingStudios::Tools::Toolbox::HeritableData.define do
     class << self
       private
 
@@ -43,7 +43,7 @@ module Ephesus::Core
       raise NoMethodError, "member not found: #{property_name.inspect}"
     end
 
-    # @return [String] the defined type for the event.
+    # @return [String] the defined type for the message.
     def type = self.class.type
   end
 end

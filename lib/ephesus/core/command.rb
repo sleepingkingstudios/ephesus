@@ -10,7 +10,7 @@ module Ephesus::Core
   class Command < Cuprum::Command
     include Ephesus::Core::Typing
 
-    # @return [Ephesus::Core::Event] the handled event.
+    # @return [Ephesus::Core::Message] the handled event.
     attr_reader :event
 
     # @return [Array<Symbol, Object>] side effects to be processed by the scene.
@@ -25,7 +25,7 @@ module Ephesus::Core
     # or an Array with the first item being the updated state and remaining
     # values the side effects to be processed by the scene.
     #
-    # @param event [Ephesus::Core::Event] the handled event.
+    # @param event [Ephesus::Core::Message] the handled event.
     # @param state [Ephesus::Core::State] the initial state of the scene.
     #
     # @return [Cuprum::Result] the command result.

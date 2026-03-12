@@ -5,7 +5,7 @@ require 'ephesus/core/command'
 RSpec.describe Ephesus::Core::Command do
   subject(:command) { described_class.new }
 
-  let(:event) { Ephesus::Core::Event.new }
+  let(:event) { Ephesus::Core::Message.new }
   let(:state) { Ephesus::Core::State.new({}) }
 
   deferred_context 'with a custom command class' do
@@ -214,7 +214,7 @@ RSpec.describe Ephesus::Core::Command do
   end
 
   describe '#push_event' do
-    let(:pushed_event) { Ephesus::Core::Event.new }
+    let(:pushed_event) { Ephesus::Core::Message.new }
 
     it { expect(command).to respond_to(:push_event, true).with(1).argument }
 
