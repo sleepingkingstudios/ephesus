@@ -4,11 +4,11 @@ require 'sleeping_king_studios/tools/toolbelt'
 require 'sleeping_king_studios/tools/toolbox/heritable_data'
 
 require 'ephesus/core'
-require 'ephesus/core/typing'
+require 'ephesus/core/messages/typing'
 
 module Ephesus::Core
   # Data class used to communicate and store changes across an application.
-  Event = SleepingKingStudios::Tools::Toolbox::HeritableData.define do
+  Message = SleepingKingStudios::Tools::Toolbox::HeritableData.define do
     class << self
       private
 
@@ -16,12 +16,12 @@ module Ephesus::Core
         super
 
         if other.is_a?(Class)
-          other.include(Ephesus::Core::Events::Definitions)
-          other.include(Ephesus::Core::Typing)
+          other.include(Ephesus::Core::Messages::Definitions)
+          other.include(Ephesus::Core::Messages::Typing)
         else
           other.define_singleton_method(:included) do |inner|
-            inner.include(Ephesus::Core::Events::Definitions)
-            inner.include(Ephesus::Core::Typing)
+            inner.include(Ephesus::Core::Messages::Definitions)
+            inner.include(Ephesus::Core::Messages::Typing)
           end
         end
       end
@@ -43,7 +43,7 @@ module Ephesus::Core
       raise NoMethodError, "member not found: #{property_name.inspect}"
     end
 
-    # @return [String] the defined type for the event.
+    # @return [String] the defined type for the message.
     def type = self.class.type
   end
 end

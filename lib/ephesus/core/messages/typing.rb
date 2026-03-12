@@ -3,15 +3,15 @@
 require 'sleeping_king_studios/tools/toolbelt'
 require 'sleeping_king_studios/tools/toolbox/mixin'
 
-require 'ephesus/core'
+require 'ephesus/core/messages'
 
-module Ephesus::Core
+module Ephesus::Core::Messages
   # Utility for defining a default type identifier based on the class name.
   module Typing
     include SleepingKingStudios::Tools::Toolbox::Mixin
 
     # String patterns to exclude when occuring at the end of a name segment.
-    EXCLUSIONS = %w[action command event notification].freeze
+    EXCLUSIONS = %w[action command event message notification].freeze
 
     EXCLUDED_PATTERN = /_?(#{EXCLUSIONS.join('|')})\z/
     private_constant :EXCLUDED_PATTERN
@@ -40,7 +40,7 @@ module Ephesus::Core
       #
       # @example A named class.
       #   class Game::Events::UpdateScore
-      #     include Ephesus::Core::Typing
+      #     include Ephesus::Core::Messages::Typing
       #   end
       #
       #   Game::Events::UpdateScore.type
@@ -48,7 +48,7 @@ module Ephesus::Core
       #
       # @example A named class with excluded segments.
       #   class Game::UpdateCommand::Notification
-      #     include Ephesus::Core::Typing
+      #     include Ephesus::Core::Messages::Typing
       #   end
       #
       #   Game::UpdateCommand::Notification.type

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/event'
+require 'ephesus/core/message'
 require 'ephesus/core/scene'
 
 RSpec.describe Ephesus::Core::Scene do
@@ -373,7 +373,7 @@ RSpec.describe Ephesus::Core::Scene do
 
     wrap_deferred 'with a scene subclass' do
       example_class 'Spec::IncrementCommand', Ephesus::Core::Command do |klass|
-        klass.const_set(:Event, Ephesus::Core::Event.define)
+        klass.const_set(:Event, Ephesus::Core::Message.define)
 
         klass.define_method(:process) do |state:, **|
           state.set('value', state.fetch('value', 0) + 1)
@@ -430,7 +430,7 @@ RSpec.describe Ephesus::Core::Scene do
         end
 
         example_class 'Spec::AddCommand', Ephesus::Core::Command do |klass|
-          klass.const_set(:Event, Ephesus::Core::Event.define(:amount))
+          klass.const_set(:Event, Ephesus::Core::Message.define(:amount))
 
           klass.define_method(:process) do |event:, state:|
             state.set('value', state.fetch('value', 0) + event.amount)
@@ -485,7 +485,7 @@ RSpec.describe Ephesus::Core::Scene do
         end
 
         example_class 'Spec::AddCommand', Ephesus::Core::Command do |klass|
-          klass.const_set(:Event, Ephesus::Core::Event.define(:amount))
+          klass.const_set(:Event, Ephesus::Core::Message.define(:amount))
 
           klass.define_method(:process) do |event:, **|
             event.amount.times do
@@ -497,7 +497,7 @@ RSpec.describe Ephesus::Core::Scene do
         end
 
         example_class 'Spec::MultiplyCommand', Ephesus::Core::Command do |klass|
-          klass.const_set(:Event, Ephesus::Core::Event.define(:amount))
+          klass.const_set(:Event, Ephesus::Core::Message.define(:amount))
 
           klass.define_method(:process) do |event:, state:|
             (event.amount - 1).times do
@@ -539,7 +539,7 @@ RSpec.describe Ephesus::Core::Scene do
   end
 
   describe '#enqueue_event' do
-    let(:event) { Ephesus::Core::Event.new }
+    let(:event) { Ephesus::Core::Message.new }
 
     define_method :enqueued_events do
       scene.send(:event_queue)
@@ -570,7 +570,7 @@ RSpec.describe Ephesus::Core::Scene do
     let(:event) { Spec::CustomEvent.new(message: 'Ad astra!') }
 
     example_constant 'Spec::CustomEvent' do
-      Ephesus::Core::Event.define(:message)
+      Ephesus::Core::Message.define(:message)
     end
 
     it { expect(scene).to respond_to(:handle_event, true).with(1).argument }
@@ -916,7 +916,7 @@ RSpec.describe Ephesus::Core::Scene do
 
     describe 'with a :notify effect' do
       let(:side_effect)  { :notify }
-      let(:notification) { Ephesus::Core::Event.new }
+      let(:notification) { Ephesus::Core::Message.new }
       let(:observer)     { Spec::Observer.new }
 
       example_class 'Spec::Observer' do |klass|
@@ -941,7 +941,7 @@ RSpec.describe Ephesus::Core::Scene do
       end
 
       example_constant 'Spec::CustomEvent' do
-        Ephesus::Core::Event.define(:message)
+        Ephesus::Core::Message.define(:message)
       end
 
       it 'should push the event to the #event_stack', :aggregate_failures do
@@ -954,7 +954,7 @@ RSpec.describe Ephesus::Core::Scene do
 
       context 'when the scene has many stacked events' do
         before(:example) do
-          3.times { scene.send(:event_stack).push(Ephesus::Core::Event.new) }
+          3.times { scene.send(:event_stack).push(Ephesus::Core::Message.new) }
         end
 
         it 'should push the event to the #event_stack', :aggregate_failures do

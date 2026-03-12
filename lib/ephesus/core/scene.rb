@@ -4,7 +4,7 @@ require 'observer'
 
 require 'ephesus/core'
 require 'ephesus/core/command'
-require 'ephesus/core/typing'
+require 'ephesus/core/messages/typing'
 
 module Ephesus::Core
   # Interactive scene that enqueues and processes input events.
@@ -99,7 +99,8 @@ module Ephesus::Core
       end
 
       def validate_event_type(event_type)
-        Ephesus::Core::Typing.validate_type(event_type, as: 'event_type')
+        Ephesus::Core::Messages::Typing
+          .validate_type(event_type, as: 'event_type')
       end
     end
 

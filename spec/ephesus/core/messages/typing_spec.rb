@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/typing'
+require 'ephesus/core/messages/typing'
 
-RSpec.describe Ephesus::Core::Typing do
-  let(:concern)         { Ephesus::Core::Typing } # rubocop:disable RSpec/DescribedClass
+RSpec.describe Ephesus::Core::Messages::Typing do
+  let(:concern)         { Ephesus::Core::Messages::Typing } # rubocop:disable RSpec/DescribedClass
   let(:described_class) { Spec::ClassWithType }
 
   define_method :tools do
@@ -11,7 +11,7 @@ RSpec.describe Ephesus::Core::Typing do
   end
 
   example_class 'Spec::ClassWithType' do |klass|
-    klass.include Ephesus::Core::Typing # rubocop:disable RSpec/DescribedClass
+    klass.include Ephesus::Core::Messages::Typing # rubocop:disable RSpec/DescribedClass
   end
 
   describe '::EXCLUSIONS' do
@@ -20,6 +20,7 @@ RSpec.describe Ephesus::Core::Typing do
         action
         command
         event
+        message
         notification
       ]
     end
@@ -139,6 +140,15 @@ RSpec.describe Ephesus::Core::Typing do
       it { expect(default_type).to be == expected }
     end
 
+    describe 'with a class with segment ending in "message"' do
+      let(:described_class) { Spec::CustomMessage }
+      let(:expected)        { 'spec.custom' }
+
+      example_class 'Spec::CustomMessage'
+
+      it { expect(default_type).to be == expected }
+    end
+
     describe 'with a class with segment ending in "notification"' do
       let(:described_class) { Spec::CustomNotification }
       let(:expected)        { 'spec.custom' }
@@ -211,7 +221,7 @@ RSpec.describe Ephesus::Core::Typing do
       let(:expected)        { 'spec.do_something.success' }
 
       example_class 'Spec::DoSomethingCommand::SuccessEvent' do |klass|
-        klass.include Ephesus::Core::Typing # rubocop:disable RSpec/DescribedClass
+        klass.include Ephesus::Core::Messages::Typing # rubocop:disable RSpec/DescribedClass
       end
 
       it { expect(described_class.type).to be == expected }

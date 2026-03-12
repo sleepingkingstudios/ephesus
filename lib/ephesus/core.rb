@@ -4,11 +4,10 @@
 module Ephesus
   # Implements functionality for Ephesus.
   module Core
-    autoload :Command, 'ephesus/core/command'
-    autoload :Event,   'ephesus/core/event'
-    autoload :Events,  'ephesus/core/events'
-    autoload :Scene,   'ephesus/core/scene'
-    autoload :State,   'ephesus/core/state'
-    autoload :Typing,  'ephesus/core/typing'
+    autoload :Command,  'ephesus/core/command'
+    autoload :Message,  'ephesus/core/message'
+    autoload :Messages, 'ephesus/core/messages'
+    autoload :Scene,    'ephesus/core/scene'
+    autoload :State,    'ephesus/core/state'
   end
 end

@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/event'
+require 'ephesus/core/message'
 
-RSpec.describe Ephesus::Core::Event do
+RSpec.describe Ephesus::Core::Message do
   subject(:event) { described_class.new }
 
   deferred_context 'with a custom event class' \
@@ -12,7 +12,7 @@ RSpec.describe Ephesus::Core::Event do
     let(:described_class) { Object.const_get(class_name) }
 
     example_constant(class_name) do
-      Ephesus::Core::Event.define(:custom_property) # rubocop:disable RSpec/DescribedClass
+      Ephesus::Core::Message.define(:custom_property) # rubocop:disable RSpec/DescribedClass
     end
   end
 

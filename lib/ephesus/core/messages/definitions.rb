@@ -1,9 +1,10 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/events'
+require 'ephesus/core/messages'
+require 'ephesus/core/messages/typing'
 
-module Ephesus::Core::Events
-  # Extends defining events to allow setting a static type identifier.
+module Ephesus::Core::Messages
+  # Extends defining messages to allow setting a static type identifier.
   module Definitions
     # Class methods prepended on the singleton class when including Definitions.
     module ClassMethods
@@ -19,7 +20,7 @@ module Ephesus::Core::Events
         super(*symbols, &).tap do |data_class|
           next unless type
 
-          Ephesus::Core::Typing.validate_type(type)
+          Ephesus::Core::Messages::Typing.validate_type(type)
 
           data_class.const_set(:TYPE, type)
         end
