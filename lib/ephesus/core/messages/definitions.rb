@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/events'
+require 'ephesus/core/messages'
 
-module Ephesus::Core::Events
-  # Extends defining events to allow setting a static type identifier.
+module Ephesus::Core::Messages
+  # Extends defining messages to allow setting a static type identifier.
   module Definitions
     # Class methods prepended on the singleton class when including Definitions.
     module ClassMethods

@@ -16,11 +16,11 @@ module Ephesus::Core
         super
 
         if other.is_a?(Class)
-          other.include(Ephesus::Core::Events::Definitions)
+          other.include(Ephesus::Core::Messages::Definitions)
           other.include(Ephesus::Core::Typing)
         else
           other.define_singleton_method(:included) do |inner|
-            inner.include(Ephesus::Core::Events::Definitions)
+            inner.include(Ephesus::Core::Messages::Definitions)
             inner.include(Ephesus::Core::Typing)
           end
         end
