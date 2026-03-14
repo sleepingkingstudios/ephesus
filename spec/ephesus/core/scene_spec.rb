@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require 'ephesus/core/message'
+require 'ephesus/core/rspec/deferred/messages_examples'
 require 'ephesus/core/scene'
 
 RSpec.describe Ephesus::Core::Scene do
+  include Ephesus::Core::RSpec::Deferred::MessagesExamples
+
   subject(:scene) { described_class.new(**constructor_options) }
 
   deferred_context 'with a scene subclass' do
@@ -31,6 +34,16 @@ RSpec.describe Ephesus::Core::Scene do
     SleepingKingStudios::Tools::Toolbelt.instance
   end
 
+  example_class 'Spec::Publisher' do |klass|
+    klass.include Ephesus::Core::Messages::Publisher
+  end
+
+  example_class 'Spec::Subscriber' do |klass|
+    klass.include Ephesus::Core::Messages::Subscriber
+
+    klass.define_method(:receive_message) { |_| nil }
+  end
+
   describe '::AbstractClassError' do
     include_examples 'should define constant',
       :AbstractClassError,
@@ -48,6 +61,8 @@ RSpec.describe Ephesus::Core::Scene do
       :UnhandledSideEffectError,
       -> { be_a(Class).and be < StandardError }
   end
+
+  include_deferred 'should publish messages'
 
   describe '.abstract?' do
     it { expect(described_class).to respond_to(:abstract?).with(0).arguments }
@@ -915,22 +930,27 @@ RSpec.describe Ephesus::Core::Scene do
     end
 
     describe 'with a :notify effect' do
-      let(:side_effect)  { :notify }
-      let(:notification) { Ephesus::Core::Message.new }
-      let(:observer)     { Spec::Observer.new }
+      let(:side_effect) { :notify }
+      let(:message)     { Ephesus::Core::Message.new }
+      let(:observer)    { Spec::Observer.new }
+      let(:expected) do
+        { channel: :notifications, message: }
+      end
 
       example_class 'Spec::Observer' do |klass|
         klass.define_method(:notifications) { @notifications ||= [] }
-
-        klass.define_method(:update) { |obj| notifications << obj }
       end
 
-      before(:example) { scene.add_observer(observer) }
+      before(:example) do
+        scene.add_subscription(observer, channel: :notifications) do |**opts|
+          observer.notifications << opts
+        end
+      end
 
       it 'should notify the observers' do
-        scene.send(:handle_side_effect, side_effect, notification)
+        scene.send(:handle_side_effect, side_effect, message)
 
-        expect(observer.notifications).to be == [notification]
+        expect(observer.notifications).to be == [expected]
       end
     end
 

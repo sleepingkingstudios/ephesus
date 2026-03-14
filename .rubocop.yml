@@ -24,8 +24,24 @@ Layout/LineLength:
     - '\A\s*#'
   Max: 80
 
+Metrics/BlockLength:
+  Exclude:
+    - '**/*_examples.rb'
+    - 'spec/**/*.rb'
+
+Metrics/ModuleLength:
+  Exclude:
+    - '**/*_examples.rb'
+    - 'spec/**/*.rb'
+
 Naming/RescuedExceptionsVariableName:
   PreferredName: exception
+
+RSpec:
+  Include:
+    - '**/*_examples.rb'
+    - '**/*_spec.rb'
+    - '**/spec/**/*'
 
 RSpec/BeNil:
   Enabled: false
@@ -44,6 +60,10 @@ RSpec/IncludeExamples:
 
 RSpec/MultipleMemoizedHelpers:
   Max: 10
+
+RSpec/NamedSubject:
+  Exclude:
+    - '**/*_examples.rb'
 
 RSpec/NestedGroups:
   Max: 5
