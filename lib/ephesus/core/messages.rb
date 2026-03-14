@@ -5,6 +5,7 @@ require 'ephesus/core'
 module Ephesus::Core
   # Namespace for functionality defining and publishing messages.
   module Messages
+    autoload :Broker,       'ephesus/core/messages/broker'
     autoload :Definitions,  'ephesus/core/messages/definitions'
     autoload :Publisher,    'ephesus/core/messages/publisher'
     autoload :Subscriber,   'ephesus/core/messages/subscriber'

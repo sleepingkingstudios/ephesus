@@ -17,6 +17,9 @@ module Ephesus::Core::Messages
     # @param method_name [String, Symbol] the name of the method on the
     #   subscriber that will be called with the message. Defaults to
     #   :receive_message.
+    #
+    # @return [Ephesus::Core::Messages::Subscription] the generated
+    #   subscription.
     def subscribe(
       publisher,
       channel:     :default,
