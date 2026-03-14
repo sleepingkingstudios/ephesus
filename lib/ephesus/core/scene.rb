@@ -4,6 +4,7 @@ require 'observer'
 
 require 'ephesus/core'
 require 'ephesus/core/command'
+require 'ephesus/core/messages/publisher'
 require 'ephesus/core/messages/typing'
 
 module Ephesus::Core
@@ -21,7 +22,7 @@ module Ephesus::Core
   # listeners or pushing more events onto the stack). A failed result may also
   # return a list of side effects.
   class Scene # rubocop:disable Metrics/ClassLength
-    include Observable
+    include Ephesus::Core::Messages::Publisher
 
     # Exception raised when setting a static option on an abstract class.
     class AbstractClassError < StandardError; end
@@ -185,9 +186,7 @@ module Ephesus::Core
     end
 
     def handle_notify(notification)
-      changed
-
-      notify_observers(notification)
+      publish(notification, channel: :notifications)
     end
 
     def handle_push_event(event)
