@@ -115,6 +115,8 @@ module Ephesus::Core::Messages
 
           return ancestor.name if ancestor.is_a?(Class) && ancestor.name
         end
+
+        mod.name
       end
 
       def included(other)
