@@ -81,6 +81,17 @@ RSpec.describe Ephesus::Core::Messages::Typing do
       it { expect(default_type).to be == expected }
     end
 
+    describe 'with a module' do
+      let(:described_class) { Spec::CustomFormat }
+      let(:expected)        { 'spec.custom_format' }
+
+      example_constant 'Spec::CustomFormat' do
+        Module.new
+      end
+
+      it { expect(default_type).to be == expected }
+    end
+
     describe 'with an anonymous class' do
       let(:described_class) { Class.new }
       let(:expected)        { nil }
@@ -91,6 +102,13 @@ RSpec.describe Ephesus::Core::Messages::Typing do
     describe 'with an anonymous class with named parent' do
       let(:described_class) { Class.new(super()) }
       let(:expected)        { 'spec.class_with_type' }
+
+      it { expect(default_type).to be == expected }
+    end
+
+    describe 'with an anonymous module' do
+      let(:described_class) { Module.new }
+      let(:expected)        { nil }
 
       it { expect(default_type).to be == expected }
     end
