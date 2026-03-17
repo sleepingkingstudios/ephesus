@@ -265,18 +265,23 @@ RSpec.describe Ephesus::Core::Scene do
   end
 
   describe '.handled_events' do
-    include_examples 'should define class reader', :handled_events, {}
+    let(:default_event_handlers) { {} }
+    let(:expected)               { default_event_handlers }
+
+    include_examples 'should define class reader',
+      :handled_events,
+      -> { expected }
 
     wrap_deferred 'with a scene subclass' do
-      it { expect(described_class.handled_events).to be == {} }
+      it { expect(described_class.handled_events).to be == expected }
 
       wrap_deferred 'when the scene handles events' do
         let(:expected) do
-          {
+          super().merge(
             'spec.commands.pull' => Spec::Commands::Pull,
             'spec.commands.push' => Spec::Commands::Push,
             'spec.events.pop'    => Spec::Commands::Pop
-          }
+          )
         end
 
         it { expect(described_class.handled_events).to be == expected }
@@ -292,11 +297,11 @@ RSpec.describe Ephesus::Core::Scene do
 
         wrap_deferred 'when the scene handles events' do
           let(:expected) do
-            {
+            super().merge(
               'spec.commands.pull' => Spec::Commands::Pull,
               'spec.commands.push' => Spec::Commands::Push,
               'spec.events.pop'    => Spec::Commands::Pop
-            }
+            )
           end
 
           it { expect(described_class.handled_events).to be == expected }
@@ -304,10 +309,10 @@ RSpec.describe Ephesus::Core::Scene do
 
         context 'when the subclass handles events' do
           let(:expected) do
-            {
+            super().merge(
               'spec.balloons.inflate' => Spec::Balloons::Inflate,
               'spec.events.pop'       => Spec::Balloons::Pop
-            }
+            )
           end
 
           example_class 'Spec::Balloons::Inflate', Ephesus::Core::Command
@@ -325,12 +330,12 @@ RSpec.describe Ephesus::Core::Scene do
 
         context 'when the scene and subclass handle events' do
           let(:expected) do
-            {
+            super().merge(
               'spec.balloons.inflate' => Spec::Balloons::Inflate,
               'spec.commands.pull'    => Spec::Commands::Pull,
               'spec.commands.push'    => Spec::Commands::Push,
               'spec.events.pop'       => Spec::Balloons::Pop
-            }
+            )
           end
 
           example_class 'Spec::Balloons::Inflate', Ephesus::Core::Command
@@ -983,6 +988,65 @@ RSpec.describe Ephesus::Core::Scene do
           )
 
           expect(scene.send(:event_stack).last).to be == event
+        end
+      end
+    end
+
+    describe 'with a :subscribe effect' do
+      let(:subscriber)  { instance_double(Spec::Subscriber, subscribe: nil) }
+      let(:side_effect) { :subscribe }
+      let(:options)     { { subscriber: } }
+      let(:expected)    { options.except(:subscriber) }
+
+      it 'should add the subscription' do
+        scene.send(:handle_side_effect, side_effect, options)
+
+        expect(subscriber).to have_received(:subscribe).with(scene, **expected)
+      end
+
+      describe 'with options' do
+        let(:options) do
+          super().merge(
+            channel:     :notifications,
+            method_name: :handle_notification
+          )
+        end
+
+        it 'should add the subscription' do
+          scene.send(:handle_side_effect, side_effect, options)
+
+          expect(subscriber)
+            .to have_received(:subscribe)
+            .with(scene, **expected)
+        end
+      end
+    end
+
+    describe 'with an :unsubscribe effect' do
+      let(:subscriber)  { instance_double(Spec::Subscriber, unsubscribe: nil) }
+      let(:side_effect) { :unsubscribe }
+      let(:options)     { { subscriber: } }
+      let(:expected)    { options.except(:subscriber) }
+
+      it 'should remove the subscription' do
+        scene.send(:handle_side_effect, side_effect, options)
+
+        expect(subscriber)
+          .to have_received(:unsubscribe)
+          .with(scene, **expected)
+      end
+
+      describe 'with options' do
+        let(:options) do
+          super().merge(channel: :notifications)
+        end
+
+        it 'should add the subscription' do
+          scene.send(:handle_side_effect, side_effect, options)
+
+          expect(subscriber)
+            .to have_received(:unsubscribe)
+            .with(scene, **expected)
         end
       end
     end

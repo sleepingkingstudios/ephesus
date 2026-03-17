@@ -33,6 +33,9 @@ module Ephesus::Core
     # Exception raised when a handler is not found for a side effect.
     class UnhandledSideEffectError < StandardError; end
 
+    DEFAULT_EVENT_HANDLERS = {}.freeze
+    private_constant :DEFAULT_EVENT_HANDLERS
+
     class << self
       # @return [true, false] true if the class is an abstract class, otherwise
       #   false.
@@ -68,7 +71,9 @@ module Ephesus::Core
       # @return [Hash{String => Class}] the event types handled by the scene and
       #   the corresponding Command classes.
       def handled_events
-        abstract? ? {} : superclass.handled_events.merge(own_handled_events)
+        return DEFAULT_EVENT_HANDLERS if self == Ephesus::Core::Scene
+
+        superclass.handled_events.merge(own_handled_events)
       end
 
       private
@@ -195,8 +200,10 @@ module Ephesus::Core
 
     def handle_side_effect(side_effect, *details)
       case side_effect
-      when :notify     then handle_notify(*details)
-      when :push_event then handle_push_event(*details)
+      when :notify      then handle_notify(*details)
+      when :push_event  then handle_push_event(*details)
+      when :subscribe   then handle_subscribe(**details.first)
+      when :unsubscribe then handle_unsubscribe(**details.first)
       else
         raise UnhandledSideEffectError,
           unhandled_side_effect_message_for(side_effect, details)
@@ -212,6 +219,14 @@ module Ephesus::Core
 
         handle_side_effect(side_effect, *details)
       end
+    end
+
+    def handle_subscribe(subscriber:, **)
+      subscriber.subscribe(self, **)
+    end
+
+    def handle_unsubscribe(subscriber:, **)
+      subscriber.unsubscribe(self, **)
     end
 
     def resolve_failure(value)
