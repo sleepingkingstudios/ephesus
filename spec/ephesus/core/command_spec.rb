@@ -112,6 +112,8 @@ RSpec.describe Ephesus::Core::Command do
   end
 
   describe '#notify' do
+    let(:actor) { Ephesus::Core::Actor.new }
+    let(:event) { Ephesus::Core::Message.define(:actor).new(actor:) }
     let(:error_message) do
       "uninitialized constant #{described_class.name}::Notification"
     end
@@ -123,19 +125,23 @@ RSpec.describe Ephesus::Core::Command do
         .and_any_keywords
     end
 
-    it 'should raise an exception' do
-      expect { command.send(:notify) }
-        .to raise_error NameError, error_message
-    end
-
-    describe 'with a notification name' do
-      let(:error_message) do
-        "uninitialized constant #{described_class.name}::FailureNotification"
-      end
+    context 'when the command has been called' do
+      before(:example) { command.call(event:, state:) }
 
       it 'should raise an exception' do
-        expect { command.send(:notify, :failure) }
+        expect { command.send(:notify) }
           .to raise_error NameError, error_message
+      end
+
+      describe 'with a notification name' do
+        let(:error_message) do
+          "uninitialized constant #{described_class.name}::FailureNotification"
+        end
+
+        it 'should raise an exception' do
+          expect { command.send(:notify, :failure) }
+            .to raise_error NameError, error_message
+        end
       end
     end
 
@@ -157,13 +163,19 @@ RSpec.describe Ephesus::Core::Command do
           [
             [
               :notify,
-              described_class::Notification.new(message: 'Ok!')
+              described_class::Notification.new(
+                original_actor: event.actor,
+                message:        'Ok!'
+              )
             ]
           ]
         end
 
         before(:example) do
-          described_class.const_set(:Notification, Data.define(:message))
+          described_class.const_set(
+            :Notification,
+            Ephesus::Core::Messages::Notification.define(:message)
+          )
         end
 
         it 'should add the notification to side effects' do
@@ -191,7 +203,10 @@ RSpec.describe Ephesus::Core::Command do
             [
               [
                 :notify,
-                described_class::FailureNotification.new(message: 'Oh no!')
+                described_class::FailureNotification.new(
+                  original_actor: event.actor,
+                  message:        'Oh no!'
+                )
               ]
             ]
           end
@@ -199,7 +214,7 @@ RSpec.describe Ephesus::Core::Command do
           before(:example) do
             described_class.const_set(
               :FailureNotification,
-              Data.define(:message)
+              Ephesus::Core::Messages::Notification.define(:message)
             )
           end
 
