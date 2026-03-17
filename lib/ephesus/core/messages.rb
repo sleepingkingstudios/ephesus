@@ -4,11 +4,13 @@ require 'ephesus/core'
 
 module Ephesus::Core
   # Namespace for functionality implementing messages.
-  module Messaging
+  module Messages
     autoload :Definitions,
       'ephesus/core/messages/definitions'
     autoload :LazyConnectionMessage,
       'ephesus/core/messages/lazy_connection_message'
+    autoload :Notification,
+      'ephesus/core/messages/notification'
     autoload :Typing,
       'ephesus/core/messages/typing'
   end

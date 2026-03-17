@@ -21,7 +21,7 @@ RSpec.describe Ephesus::Core::Messages::LazyConnectionMessage do
   end
 
   describe '#connection' do
-    it { expect(message.connection).to be nil }
+    include_examples 'should define reader', :connection, nil
 
     context 'when initialized with connection: value' do
       let(:connection) do
