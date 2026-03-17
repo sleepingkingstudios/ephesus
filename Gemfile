@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-ruby '4.0.1'
+ruby '4.0.2'
 
 gem 'sleeping_king_studios-tools',
   git: 'https://github.com/sleepingkingstudios/sleeping_king_studios-tools'
