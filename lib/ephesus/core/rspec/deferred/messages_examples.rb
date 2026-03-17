@@ -379,11 +379,17 @@ module Ephesus::Core::RSpec::Deferred
           let(:subscription) do
             Ephesus::Core::Messages::Subscription.new(
               channel:    :default,
-              publisher:  described_class.new,
+              publisher:  build_publisher,
               subscriber: Spec::Subscriber.new
             )
           end
           let(:channel) { subscription.channel }
+
+          define_method(:build_publisher) do
+            return super() if defined?(super())
+
+            subject.class.new
+          end
 
           define_method(:remove_subscription) do
             subject.remove_subscription(subscription)
@@ -512,11 +518,17 @@ module Ephesus::Core::RSpec::Deferred
               let(:subscription) do
                 Ephesus::Core::Messages::Subscription.new(
                   channel:    :default,
-                  publisher:  subject.class.new,
+                  publisher:  build_publisher,
                   subscriber: Spec::Subscriber.new
                 )
               end
               let(:channel) { subscription.channel }
+
+              define_method(:build_publisher) do
+                return super() if defined?(super())
+
+                subject.class.new
+              end
 
               it { expect(remove_subscription).to be nil }
 
