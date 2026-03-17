@@ -30,6 +30,10 @@ module Ephesus::Core
     # @param message [Ephesus::Core::Message] the received input message.
     #
     # return [void]
-    def handle_input(message) = publish(message, channel: :events)
+    def handle_input(message)
+      message = message.with(connection: self)
+
+      publish(message, channel: :events)
+    end
   end
 end

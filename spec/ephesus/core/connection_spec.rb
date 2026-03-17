@@ -55,7 +55,14 @@ RSpec.describe Ephesus::Core::Connection do
 
   describe '#handle_input' do
     let(:subscriber) { Spec::Subscriber.new }
-    let(:message)    { Ephesus::Core::Message.new }
+    let(:message)    { Spec::InputMessage.new(text: 'Greetings, programs!') }
+    let(:expected_message) do
+      Spec::InputMessage.new(connection:, text: 'Greetings, programs!')
+    end
+
+    example_constant 'Spec::InputMessage' do
+      Ephesus::Core::Messages::LazyConnectionMessage.define(:text)
+    end
 
     before(:example) do
       connection.add_subscription(subscriber, channel: :events)
@@ -66,7 +73,7 @@ RSpec.describe Ephesus::Core::Connection do
     it 'should publish the message to :events' do
       connection.handle_input(message)
 
-      expect(subscriber.messages).to be == [message]
+      expect(subscriber.messages).to be == [expected_message]
     end
   end
 
