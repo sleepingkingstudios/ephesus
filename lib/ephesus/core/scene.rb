@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'observer'
+require 'securerandom'
 
 require 'ephesus/core'
 require 'ephesus/core/command'
@@ -23,6 +23,7 @@ module Ephesus::Core
   # listeners or pushing more events onto the stack). A failed result may also
   # return a list of side effects.
   class Scene # rubocop:disable Metrics/ClassLength
+    include Ephesus::Core::Messages::Typing
     include Ephesus::Core::Messaging::Publisher
 
     # Exception raised when setting a static option on an abstract class.
@@ -117,12 +118,16 @@ module Ephesus::Core
     # @param [Hash] the initial state for the scene. Will be merged onto the
     #   defined default state, if any.
     def initialize(state: {})
+      @id          = SecureRandom.uuid_v7
       @event_queue = []
       @event_stack = []
       @state       = build_state(
         default_state.merge(tools.hash_tools.convert_keys_to_strings(state))
       )
     end
+
+    # @return [String] a unique identifier for the scene.
+    attr_reader :id
 
     # @return [Ephesus::Core::State] the current state for the scene.
     attr_reader :state
@@ -152,6 +157,9 @@ module Ephesus::Core
     def enqueue_event(event) = event_queue << event
     alias enqueue enqueue_event
 
+    # @return [String] the type identifier for the scene.
+    def type = self.class.type
+
     private
 
     attr_reader :event_queue
@@ -170,6 +178,12 @@ module Ephesus::Core
     end
 
     def default_state = { 'actors' => {} }
+
+    def each_actor(&)
+      return enum_for(:each_actor) unless block_given?
+
+      @state.get('actors').each_value(&)
+    end
 
     def event_handler_for(event)
       command_class = self.class.handled_events.fetch(event.type) do
@@ -194,8 +208,20 @@ module Ephesus::Core
       result
     end
 
-    def handle_notify(notification)
-      publish(notification, channel: :notifications)
+    def handle_notify(notification) # rubocop:disable Metrics/MethodLength
+      context = notification.context.merge(scene_type: type)
+
+      if notification.current_actor
+        notification
+          .current_actor
+          .handle_notification(notification.with(context:))
+      else
+        each_actor do |actor|
+          actor.handle_notification(
+            notification.with(current_actor: actor, context:)
+          )
+        end
+      end
     end
 
     def handle_push_event(event)

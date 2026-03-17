@@ -40,10 +40,13 @@ module Ephesus::Core
     private
 
     def notify(name = 'Notification', **)
-      name = tools.string_tools.camelize(name.to_s)
+      actor = event.actor
+      name  = tools.string_tools.camelize(name.to_s)
       name += 'Notification' unless name.end_with?('Notification')
 
-      side_effects << [:notify, self.class.const_get(name).new(**)]
+      notification = self.class.const_get(name).new(**, original_actor: actor)
+
+      side_effects << [:notify, notification]
     end
 
     def push_event(event) = side_effects << [:push_event, event]

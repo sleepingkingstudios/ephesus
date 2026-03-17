@@ -77,6 +77,16 @@ RSpec.describe Ephesus::Core::Connection do
     end
   end
 
+  describe '#handle_notification' do
+    let(:message) { Ephesus::Core::Message.new }
+
+    it 'should define the method' do
+      expect(connection).to respond_to(:handle_notification).with(1).argument
+    end
+
+    it { expect(connection.handle_notification(message)).to be nil }
+  end
+
   describe '#id' do
     let(:expected_format) { /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/ }
 

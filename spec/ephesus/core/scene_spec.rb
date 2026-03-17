@@ -361,6 +361,24 @@ RSpec.describe Ephesus::Core::Scene do
     end
   end
 
+  describe '.type' do
+    let(:expected) { 'ephesus.core' }
+
+    include_examples 'should define class reader', :type, -> { expected }
+
+    wrap_deferred 'with a scene subclass' do
+      it { expect(described_class.type).to be == 'spec.custom' }
+
+      context 'when the class defines a ::TYPE' do
+        let(:expected) { 'spec.type_from_constant' }
+
+        before(:example) { described_class.const_set(:TYPE, expected) }
+
+        it { expect(described_class.type).to be == expected }
+      end
+    end
+  end
+
   describe '.new' do
     it 'should define the constructor' do
       expect(described_class)
@@ -943,27 +961,131 @@ RSpec.describe Ephesus::Core::Scene do
     end
 
     describe 'with a :notify effect' do
-      let(:side_effect) { :notify }
-      let(:message)     { Ephesus::Core::Message.new }
-      let(:observer)    { Spec::Observer.new }
-      let(:expected) do
-        { channel: :notifications, message: }
+      let(:side_effect)    { :notify }
+      let(:original_actor) { Spec::Actor.new }
+      let(:message) do
+        Ephesus::Core::Messages::Notification.new(original_actor:)
+      end
+      let(:context) do
+        { scene_type: scene.type }
       end
 
-      example_class 'Spec::Observer' do |klass|
+      example_class 'Spec::Actor', Ephesus::Core::Actor do |klass|
         klass.define_method(:notifications) { @notifications ||= [] }
-      end
 
-      before(:example) do
-        scene.add_subscription(observer, channel: :notifications) do |**opts|
-          observer.notifications << opts
+        klass.define_method(:handle_notification) do |notification|
+          notifications << notification
         end
       end
 
-      it 'should notify the observers' do
+      it 'should not push the notification to the original actor' do
         scene.send(:handle_side_effect, side_effect, message)
 
-        expect(observer.notifications).to be == [expected]
+        expect(original_actor.notifications).to be == []
+      end
+
+      describe 'with a message with current_actor: value' do
+        let(:current_actor) { Spec::Actor.new }
+        let(:message)       { super().with(current_actor:) }
+        let(:expected)      { message.with(context:) }
+
+        it 'should not push the notification to the original actor' do
+          scene.send(:handle_side_effect, side_effect, message)
+
+          expect(original_actor.notifications).to be == []
+        end
+
+        it 'should push the notification to the current actor' do
+          scene.send(:handle_side_effect, side_effect, message)
+
+          expect(current_actor.notifications).to be == [expected]
+        end
+      end
+
+      context 'when the scene has one actor' do
+        let(:actor)    { Spec::Actor.new }
+        let(:expected) { message.with(context:, current_actor: actor) }
+        let(:state)    { { 'actors' => { actor.id => actor } } }
+        let(:constructor_options) do
+          super().merge(state:)
+        end
+
+        it 'should not push the notification to the original actor' do
+          scene.send(:handle_side_effect, side_effect, message)
+
+          expect(original_actor.notifications).to be == []
+        end
+
+        it 'should push the notification to the actor' do
+          scene.send(:handle_side_effect, side_effect, message)
+
+          expect(actor.notifications).to be == [expected]
+        end
+
+        describe 'with a message with current_actor: value' do
+          let(:current_actor) { Spec::Actor.new }
+          let(:message)       { super().with(current_actor:) }
+          let(:expected)      { message.with(context:) }
+
+          it 'should push the notification to the current actor' do
+            scene.send(:handle_side_effect, side_effect, message)
+
+            expect(current_actor.notifications).to be == [expected]
+          end
+
+          it 'should not push the notification to the actor' do
+            scene.send(:handle_side_effect, side_effect, message)
+
+            expect(actor.notifications).to be == []
+          end
+        end
+      end
+
+      context 'when the scene has many actors' do
+        let(:actors) { Array.new(3) { Spec::Actor.new } }
+        let(:state) do
+          { 'actors' => actors.to_h { |actor| [actor.id, actor] } }
+        end
+        let(:constructor_options) do
+          super().merge(state:)
+        end
+
+        it 'should not push the notification to the original actor' do
+          scene.send(:handle_side_effect, side_effect, message)
+
+          expect(original_actor.notifications).to be == []
+        end
+
+        it 'should push the notification to each actor', :aggregate_failures do
+          scene.send(:handle_side_effect, side_effect, message)
+
+          actors.each do |actor|
+            expect(actor.notifications)
+              .to be == [message.with(context:, current_actor: actor)]
+          end
+        end
+
+        describe 'with a message with current_actor: value' do
+          let(:current_actor) { Spec::Actor.new }
+          let(:message)       { super().with(current_actor:) }
+          let(:expected)      { message.with(context:) }
+
+          it 'should push the notification to the current actor' do
+            scene.send(:handle_side_effect, side_effect, message)
+
+            expect(current_actor.notifications).to be == [expected]
+          end
+
+          it 'should not push the notification to the actors',
+            :aggregate_failures \
+          do
+            scene.send(:handle_side_effect, side_effect, message)
+
+            actors.each do |actor|
+              expect(actor.notifications).to be == []
+            end
+          end
+        end
       end
     end
 
@@ -1060,6 +1182,14 @@ RSpec.describe Ephesus::Core::Scene do
     end
   end
 
+  describe '#id' do
+    let(:expected_format) { /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/ }
+
+    include_examples 'should define reader',
+      :id,
+      -> { be_a(String).and match(expected_format) }
+  end
+
   describe '#state' do
     let(:expected) { { 'actors' => {} } }
 
@@ -1122,6 +1252,24 @@ RSpec.describe Ephesus::Core::Scene do
         end
 
         it { expect(scene.state).to be_a described_class::State }
+      end
+    end
+  end
+
+  describe '#type' do
+    let(:expected) { 'ephesus.core' }
+
+    include_examples 'should define reader', :type, -> { expected }
+
+    wrap_deferred 'with a scene subclass' do
+      it { expect(scene.type).to be == 'spec.custom' }
+
+      context 'when the class defines a ::TYPE' do
+        let(:expected) { 'spec.type_from_constant' }
+
+        before(:example) { described_class.const_set(:TYPE, expected) }
+
+        it { expect(scene.type).to be == expected }
       end
     end
   end

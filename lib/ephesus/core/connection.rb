@@ -35,5 +35,13 @@ module Ephesus::Core
 
       publish(message, channel: :events)
     end
+
+    # Handles notifications received from the actor.
+    #
+    # @param message [Ephesus::Core::Messages::Notification] the received
+    #   notification.
+    #
+    # @return [void]
+    def handle_notification(_message) = nil
   end
 end
