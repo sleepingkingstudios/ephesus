@@ -265,8 +265,13 @@ RSpec.describe Ephesus::Core::Scene do
   end
 
   describe '.handled_events' do
-    let(:default_event_handlers) { {} }
-    let(:expected)               { default_event_handlers }
+    let(:default_event_handlers) do
+      [
+        Ephesus::Core::Commands::ConnectActor
+      ]
+        .to_h { |command_class| [command_class.type, command_class] }
+    end
+    let(:expected) { default_event_handlers }
 
     include_examples 'should define class reader',
       :handled_events,
@@ -293,7 +298,7 @@ RSpec.describe Ephesus::Core::Scene do
 
         example_class 'Spec::SceneSubclass', 'Spec::CustomScene'
 
-        it { expect(described_class.handled_events).to be == {} }
+        it { expect(described_class.handled_events).to be == expected }
 
         wrap_deferred 'when the scene handles events' do
           let(:expected) do

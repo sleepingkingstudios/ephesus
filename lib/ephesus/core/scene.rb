@@ -4,6 +4,7 @@ require 'observer'
 
 require 'ephesus/core'
 require 'ephesus/core/command'
+require 'ephesus/core/commands/connect_actor'
 require 'ephesus/core/messages/publisher'
 require 'ephesus/core/messages/typing'
 
@@ -33,7 +34,10 @@ module Ephesus::Core
     # Exception raised when a handler is not found for a side effect.
     class UnhandledSideEffectError < StandardError; end
 
-    DEFAULT_EVENT_HANDLERS = {}.freeze
+    DEFAULT_EVENT_HANDLERS =
+      [Ephesus::Core::Commands::ConnectActor]
+      .to_h { |command_class| [command_class.type, command_class] }
+      .freeze
     private_constant :DEFAULT_EVENT_HANDLERS
 
     class << self
