@@ -4,6 +4,7 @@ require 'sleeping_king_studios/tools/toolbelt'
 require 'sleeping_king_studios/tools/toolbox/heritable_data'
 
 require 'ephesus/core'
+require 'ephesus/core/messages/definitions'
 require 'ephesus/core/messages/typing'
 
 module Ephesus::Core

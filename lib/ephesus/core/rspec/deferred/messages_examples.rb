@@ -116,12 +116,12 @@ module Ephesus::Core::RSpec::Deferred
       define_method :stub_subscription do |publisher| # rubocop:disable Metrics/MethodLength
         allow(publisher).to receive(:add_subscription) do |channel:, **|
           instance_double(
-            Ephesus::Core::Messages::Subscription,
+            Ephesus::Core::Messaging::Subscription,
             channel:,
             publisher:
           ).tap do |double|
             allow(double).to receive(:is_a?) do |expected|
-              expected == Ephesus::Core::Messages::Subscription
+              expected == Ephesus::Core::Messaging::Subscription
             end
           end
         end
@@ -165,7 +165,7 @@ module Ephesus::Core::RSpec::Deferred
         let(:options) { {} }
         let(:block)   { nil }
         let(:expected) do
-          Ephesus::Core::Messages::Subscription.new(
+          Ephesus::Core::Messaging::Subscription.new(
             block:,
             channel:,
             publisher:  subject,
@@ -377,7 +377,7 @@ module Ephesus::Core::RSpec::Deferred
 
         describe 'with a subscription' do
           let(:subscription) do
-            Ephesus::Core::Messages::Subscription.new(
+            Ephesus::Core::Messaging::Subscription.new(
               channel:    :default,
               publisher:  build_publisher,
               subscriber: Spec::Subscriber.new
@@ -516,7 +516,7 @@ module Ephesus::Core::RSpec::Deferred
 
             context 'when the publisher does not include the subscription' do
               let(:subscription) do
-                Ephesus::Core::Messages::Subscription.new(
+                Ephesus::Core::Messaging::Subscription.new(
                   channel:    :default,
                   publisher:  build_publisher,
                   subscriber: Spec::Subscriber.new
@@ -576,7 +576,7 @@ module Ephesus::Core::RSpec::Deferred
         let(:options)   { {} }
         let(:block)     { nil }
         let(:expected) do
-          Ephesus::Core::Messages::Subscription.new(
+          Ephesus::Core::Messaging::Subscription.new(
             block:,
             channel:,
             publisher:,
@@ -698,7 +698,7 @@ module Ephesus::Core::RSpec::Deferred
 
         describe 'with a subscription' do
           let(:subscription) do
-            Ephesus::Core::Messages::Subscription.new(
+            Ephesus::Core::Messaging::Subscription.new(
               channel:    :default,
               publisher:,
               subscriber: subject
@@ -842,7 +842,7 @@ module Ephesus::Core::RSpec::Deferred
 
             context 'when the subscriber does not include the subscription' do
               let(:subscription) do
-                Ephesus::Core::Messages::Subscription.new(
+                Ephesus::Core::Messaging::Subscription.new(
                   channel:    :default,
                   publisher:,
                   subscriber: subject

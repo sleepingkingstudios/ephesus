@@ -3,12 +3,12 @@
 require 'securerandom'
 
 require 'ephesus/core'
-require 'ephesus/core/messages/publisher'
+require 'ephesus/core/messaging/publisher'
 
 module Ephesus::Core
   # Class representing an external connection to the server.
   class Connection
-    include Ephesus::Core::Messages::Publisher
+    include Ephesus::Core::Messaging::Publisher
 
     # @param format [String] the configured format for the connection.
     def initialize(format:)

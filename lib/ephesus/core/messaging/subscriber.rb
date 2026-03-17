@@ -1,13 +1,13 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/messages'
+require 'ephesus/core/messaging'
 
-module Ephesus::Core::Messages
+module Ephesus::Core::Messaging
   # Mixin providing methods for subscribing to a message publisher.
   module Subscriber
     # Defines and adds a message subscription.
     #
-    # @param publisher [Ephesus::Core::Messages::Publisher] the object from
+    # @param publisher [Ephesus::Core::Messaging::Publisher] the object from
     #   which to receive messages.
     # @param channel [Symbol] the channel to subscribe to.
     # @param matching [#===, nil] condition used to check published messages.
@@ -32,25 +32,25 @@ module Ephesus::Core::Messages
     # @overload unsubscribe(subscription)
     #   Removes the subscription.
     #
-    #   @param subscription [Ephesus::Core::Messages::Subscription] the
+    #   @param subscription [Ephesus::Core::Messaging::Subscription] the
     #     subscription to remove.
     #
-    #   @return [Ephesus::Core::Messages::Subscription, nil] the removed
+    #   @return [Ephesus::Core::Messaging::Subscription, nil] the removed
     #     subscription, or nil if the publisher did not include the given
     #     subscription.
     #
     # @overload remove_subscription(publisher, channel: :default)
     #   Finds and removes all subscriptions for the publisher and channel.
     #
-    #   @param publisher [Ephesus::Core::Messages::Publisher] the object from
+    #   @param publisher [Ephesus::Core::Messaging::Publisher] the object from
     #     which to receive messages.
     #   @param channel [Symbol] the channel to remove a subscription from.
     #
-    #   @return [Array, Ephesus::Core::Messages::Subscription, nil] the removed
+    #   @return [Array, Ephesus::Core::Messaging::Subscription, nil] the removed
     #     subscription(s), or nil if the publisher did not have a subscription
     #     for the given subscriber and channel.
     def unsubscribe(value, channel: nil)
-      if value.is_a?(Ephesus::Core::Messages::Subscription)
+      if value.is_a?(Ephesus::Core::Messaging::Subscription)
         return unsubscribe_by_identity(value)
       end
 
@@ -62,7 +62,7 @@ module Ephesus::Core::Messages
     # @overload unsubscribe()
     #   Removes all subscriptions.
     #
-    #   @return [Array<Ephesus::Core::Messages::Subscriptions>] the removed
+    #   @return [Array<Ephesus::Core::Messaging::Subscriptions>] the removed
     #     subscriptions.
     #
     # @overload unsubscribe_all(channel:)
@@ -70,7 +70,7 @@ module Ephesus::Core::Messages
     #
     #   @param channel [Symbol] the channel from which to remove subscriptions.
     #
-    #   @return [Array<Ephesus::Core::Messages::Subscriptions>] the removed
+    #   @return [Array<Ephesus::Core::Messaging::Subscriptions>] the removed
     #     subscriptions.
     def unsubscribe_all(channel: nil)
       find_matching_subscriptions(channel:).each do |subscription|
