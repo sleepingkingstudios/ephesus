@@ -22,6 +22,7 @@ RSpec.describe Ephesus::Core::Messages::Typing do
         event
         message
         notification
+        scene
       ]
     end
 
@@ -172,6 +173,15 @@ RSpec.describe Ephesus::Core::Messages::Typing do
       let(:expected)        { 'spec.custom' }
 
       example_class 'Spec::CustomNotification'
+
+      it { expect(default_type).to be == expected }
+    end
+
+    describe 'with a class with segment ending in "scene"' do
+      let(:described_class) { Spec::CustomScene }
+      let(:expected)        { 'spec.custom' }
+
+      example_class 'Spec::CustomScene'
 
       it { expect(default_type).to be == expected }
     end
