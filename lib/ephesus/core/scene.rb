@@ -5,8 +5,8 @@ require 'observer'
 require 'ephesus/core'
 require 'ephesus/core/command'
 require 'ephesus/core/commands/connect_actor'
-require 'ephesus/core/messages/publisher'
 require 'ephesus/core/messages/typing'
+require 'ephesus/core/messaging/publisher'
 
 module Ephesus::Core
   # Interactive scene that enqueues and processes input events.
@@ -23,7 +23,7 @@ module Ephesus::Core
   # listeners or pushing more events onto the stack). A failed result may also
   # return a list of side effects.
   class Scene # rubocop:disable Metrics/ClassLength
-    include Ephesus::Core::Messages::Publisher
+    include Ephesus::Core::Messaging::Publisher
 
     # Exception raised when setting a static option on an abstract class.
     class AbstractClassError < StandardError; end

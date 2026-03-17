@@ -1,14 +1,14 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/messages'
-require 'ephesus/core/messages/subscription'
+require 'ephesus/core/messaging'
+require 'ephesus/core/messaging/subscription'
 
-module Ephesus::Core::Messages
+module Ephesus::Core::Messaging
   # Mixin providing methods for publishing messages.
   module Publisher
     # @private
     class AllChannels
-      def inspect = '#<Ephesus::Core::Messages::Publisher::AllChannels>'
+      def inspect = '#<Ephesus::Core::Messaging::Publisher::AllChannels>'
     end
     private_constant :AllChannels
 
@@ -37,7 +37,7 @@ module Ephesus::Core::Messages
     #     subscriptions to ALL_CHANNELS.
     #   @yield_param message [Ephesus::Core::Message] the published message.
     def add_subscription(subscriber, channel: :default, **, &block)
-      subscription = Ephesus::Core::Messages::Subscription.new(
+      subscription = Ephesus::Core::Messaging::Subscription.new(
         block:,
         channel:,
         publisher:  self,
@@ -71,10 +71,10 @@ module Ephesus::Core::Messages
     # @overload remove_subscription(subscription)
     #   Removes the subscription from the corresponding channel.
     #
-    #   @param subscription [Ephesus::Core::Messages::Subscription] the
+    #   @param subscription [Ephesus::Core::Messaging::Subscription] the
     #     subscription to remove.
     #
-    #   @return [Ephesus::Core::Messages::Subscription, nil] the removed
+    #   @return [Ephesus::Core::Messaging::Subscription, nil] the removed
     #     subscription, or nil if the publisher did not include the given
     #     subscription.
     #
@@ -84,11 +84,11 @@ module Ephesus::Core::Messages
     #   @param subscriber [Object] the subscriber to remove.
     #   @param channel [Symbol] the channel to remove a subscription from.
     #
-    #   @return [Ephesus::Core::Messages::Subscription, nil] the removed
+    #   @return [Ephesus::Core::Messaging::Subscription, nil] the removed
     #     subscription, or nil if the publisher did not have a subscription
     #     for the given subscriber and channel.
     def remove_subscription(value, channel: :default)
-      if value.is_a?(Ephesus::Core::Messages::Subscription)
+      if value.is_a?(Ephesus::Core::Messaging::Subscription)
         return remove_subscription_by_identity(value)
       end
 

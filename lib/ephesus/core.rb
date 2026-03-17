@@ -11,6 +11,7 @@ module Ephesus
     autoload :Connection, 'ephesus/core/connection'
     autoload :Message,    'ephesus/core/message'
     autoload :Messages,   'ephesus/core/messages'
+    autoload :Messaging,  'ephesus/core/messaging'
     autoload :Scene,      'ephesus/core/scene'
     autoload :State,      'ephesus/core/state'
   end

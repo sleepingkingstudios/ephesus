@@ -1,8 +1,8 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/messages'
+require 'ephesus/core/messaging'
 
-module Ephesus::Core::Messages
+module Ephesus::Core::Messaging
   BOTH_KEYWORDS = %i[channel message].freeze
   private_constant :BOTH_KEYWORDS
 

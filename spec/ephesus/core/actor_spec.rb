@@ -9,11 +9,11 @@ RSpec.describe Ephesus::Core::Actor do
   subject(:actor) { described_class.new }
 
   example_class 'Spec::Publisher' do |klass|
-    klass.include Ephesus::Core::Messages::Publisher
+    klass.include Ephesus::Core::Messaging::Publisher
   end
 
   example_class 'Spec::Subscriber' do |klass|
-    klass.include Ephesus::Core::Messages::Subscriber
+    klass.include Ephesus::Core::Messaging::Subscriber
 
     klass.define_method(:messages) { @messages ||= [] }
 

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require 'ephesus/core/message'
-require 'ephesus/core/messages/subscription'
+require 'ephesus/core/messaging/subscription'
 
-RSpec.describe Ephesus::Core::Messages::Subscription do
+RSpec.describe Ephesus::Core::Messaging::Subscription do
   subject(:subscription) { described_class.new(**attributes) }
 
   deferred_context 'when initialized with a block' do

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/messages/publisher'
+require 'ephesus/core/messaging/publisher'
 require 'ephesus/core/rspec/deferred/messages_examples'
 
-RSpec.describe Ephesus::Core::Messages::Publisher do
+RSpec.describe Ephesus::Core::Messaging::Publisher do
   include Ephesus::Core::RSpec::Deferred::MessagesExamples
 
   subject(:publisher) { described_class.new }
@@ -11,7 +11,7 @@ RSpec.describe Ephesus::Core::Messages::Publisher do
   let(:described_class) { Spec::Publisher }
 
   example_class 'Spec::Publisher' do |klass|
-    klass.include Ephesus::Core::Messages::Publisher # rubocop:disable RSpec/DescribedClass
+    klass.include Ephesus::Core::Messaging::Publisher # rubocop:disable RSpec/DescribedClass
   end
 
   example_class 'Spec::Subscriber' do |klass|
@@ -20,7 +20,7 @@ RSpec.describe Ephesus::Core::Messages::Publisher do
 
   describe '::ALL_CHANNELS' do
     let(:expected) do
-      '#<Ephesus::Core::Messages::Publisher::AllChannels>'
+      '#<Ephesus::Core::Messaging::Publisher::AllChannels>'
     end
 
     include_examples 'should define constant', :ALL_CHANNELS
