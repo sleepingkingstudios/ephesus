@@ -74,6 +74,22 @@ module Ephesus::Core
       other.is_a?(Ephesus::Core::State) && to_h == other.to_h
     end
 
+    # Removes the value at the given scoped path.
+    #
+    # @param path [Array<String>] the scoped path. Must be a non-empty list of
+    #   lowercase, underscored Strings.
+    #
+    # @return [State] an instance of the State class.
+    def delete(*path)
+      *path, key = Ephesus::Core::State.validate_path(*path, as: 'path')
+
+      data = resolve_path(*path)
+
+      remove_item(data, key)
+
+      self
+    end
+
     # @overload fetch(path)
     #   Retrieves the value at the given scoped path.
     #
@@ -139,7 +155,7 @@ module Ephesus::Core
     #   Hashes for intermediate path segments as required. Otherwise, the full
     #   path prefix must exist.
     #
-    # @return [State] an instance of the State class
+    # @return [State] an instance of the State class.
     def set(*path, value:, intermediate_path: false)
       *path, key = Ephesus::Core::State.validate_path(*path, as: 'path')
 
@@ -200,7 +216,15 @@ module Ephesus::Core
       tools.hash_tools.convert_keys_to_strings(state)
     end
 
-    def resolve_path(*path, intermediate_path:)
+    def remove_item(data, key)
+      case data
+      when Hash then data.delete(key)
+      else
+        data.public_send("#{key}=", nil)
+      end
+    end
+
+    def resolve_path(*path, intermediate_path: false)
       unless intermediate_path
         return path.reduce(@state) { |data, key| fetch_item(data, key) }
       end

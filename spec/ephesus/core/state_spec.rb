@@ -298,6 +298,219 @@ RSpec.describe Ephesus::Core::State do
     end
   end
 
+  describe '#delete' do
+    deferred_examples 'should update the value' do
+      it { expect(state.delete(*path)).to be_a described_class }
+
+      it 'should clear the value on the returned state', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+        *scope, key = path
+
+        updated = state.delete(*scope, key)
+        parent  = scope.empty? ? updated.to_h : updated.get(*scope)
+
+        if parent.is_a?(Hash)
+          expect(parent.key?(key.to_s)).to be false
+        else
+          expect(parent.public_send(key)).to be nil
+        end
+      end
+    end
+
+    it { expect(state).to respond_to(:delete).with_unlimited_arguments }
+
+    describe 'with path: nil' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as: 'path')
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete(nil) }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with path: an Object' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:name, as: 'path')
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete(Object.new.freeze) }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with path: an empty String' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as: 'path')
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete('') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with path: an empty Symbol' do
+      let(:error_message) do
+        tools.assertions.error_message_for(:presence, as: 'path')
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete(:'') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with path: an invalid String' do
+      let(:error_message) do
+        'path must be a String containing only lowercase letters, digits, ' \
+          'underscores, and dashes'
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete('InvalidFormat') }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with path: an invalid Symbol' do
+      let(:error_message) do
+        'path must be a String containing only lowercase letters, digits, ' \
+          'underscores, and dashes'
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete(:InvalidFormat) }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with path: a scoped path with missing segments' do
+      let(:path)  { %w[weapons swords longsword] }
+      let(:value) { 'zweihänder' }
+      let(:error_message) do
+        expected = 'weapons'
+
+        "key not found: #{expected.inspect}"
+      end
+
+      it 'should raise an exception' do
+        expect { state.delete(*path) }
+          .to raise_error KeyError, error_message
+      end
+    end
+
+    describe 'with path: a valid String' do
+      let(:path) { %w[checksum] }
+
+      include_deferred 'should update the value'
+    end
+
+    describe 'with path: a valid Symbol' do
+      let(:path) { %i[checksum] }
+
+      include_deferred 'should update the value'
+    end
+
+    wrap_deferred 'when initialized with an initial state' do
+      describe 'with path: an invalid String' do
+        let(:error_message) do
+          'path must be a String containing only lowercase letters, digits, ' \
+            'underscores, and dashes'
+        end
+
+        it 'should raise an exception' do
+          expect { state.delete('InvalidFormat') }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+
+      describe 'with path: an invalid Symbol' do
+        let(:error_message) do
+          'path must be a String containing only lowercase letters, digits, ' \
+            'underscores, and dashes'
+        end
+
+        it 'should raise an exception' do
+          expect { state.delete(:InvalidFormat) }
+            .to raise_error ArgumentError, error_message
+        end
+      end
+
+      describe 'with path: a scoped path with missing segments' do
+        let(:path)  { %w[weapons swords longsword] }
+        let(:value) { 'zweihänder' }
+        let(:error_message) do
+          expected = 'weapons'
+
+          "key not found: #{expected.inspect}"
+        end
+
+        it 'should raise an exception' do
+          expect { state.delete(*path) }
+            .to raise_error KeyError, error_message
+        end
+      end
+
+      describe 'with path: a partially-valid scoped path' do
+        let(:path)  { %w[path from here to there] }
+        let(:value) { 'a maze of twisting passages, all alike' }
+        let(:error_message) do
+          expected = 'from'
+
+          "key not found: #{expected.inspect}"
+        end
+
+        it 'should raise an exception' do
+          expect { state.delete(*path) }
+            .to raise_error KeyError, error_message
+        end
+      end
+
+      describe 'with path: an invalid property of an object' do
+        let(:path)          { %w[user password] }
+        let(:value)         { 'l3tm31n' }
+        let(:error_message) { /undefined method 'password='/ }
+
+        it 'should raise an exception' do
+          expect { state.delete(*path) }
+            .to raise_error NoMethodError, error_message
+        end
+      end
+
+      describe 'with path: a valid String' do
+        let(:path) { %w[secret] }
+
+        include_deferred 'should update the value'
+      end
+
+      describe 'with path: a valid Symbol' do
+        let(:path) { %i[secret] }
+
+        include_deferred 'should update the value'
+      end
+
+      describe 'with path: an existing path' do
+        let(:path) { %w[path to scoped_value] }
+
+        include_deferred 'should update the value'
+      end
+
+      describe 'with path: a valid property of an object' do
+        let(:path) { %w[user name] }
+
+        include_deferred 'should update the value'
+      end
+
+      describe 'with path: a nested property of an object' do
+        let(:path) { %w[user data role] }
+
+        include_deferred 'should update the value'
+      end
+    end
+  end
+
   describe '#fetch' do
     deferred_examples 'should raise a KeyError' do |expected_key = nil|
       let(:error_message) do
