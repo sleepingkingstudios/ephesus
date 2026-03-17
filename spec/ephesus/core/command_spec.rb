@@ -68,12 +68,12 @@ RSpec.describe Ephesus::Core::Command do
       context 'when the command updates the state' do
         let(:implementation) do
           lambda do |**|
-            @state = state.set('secret', 12_345)
+            @state = state.set('secret', value: 12_345)
 
             success
           end
         end
-        let(:expected_value) { state.set('secret', 12_345) }
+        let(:expected_value) { state.set('secret', value: 12_345) }
 
         it 'should return a passing result with the updated state' do
           expect(command.call(event:, state:))

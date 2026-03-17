@@ -396,7 +396,7 @@ RSpec.describe Ephesus::Core::Scene do
         klass.const_set(:Event, Ephesus::Core::Message.define)
 
         klass.define_method(:process) do |state:, **|
-          state.set('value', state.fetch('value', 0) + 1)
+          state.set('value', value: state.fetch('value', default: 0) + 1)
         end
       end
 
@@ -453,7 +453,10 @@ RSpec.describe Ephesus::Core::Scene do
           klass.const_set(:Event, Ephesus::Core::Message.define(:amount))
 
           klass.define_method(:process) do |event:, state:|
-            state.set('value', state.fetch('value', 0) + event.amount)
+            state.set(
+              'value',
+              value: state.fetch('value', default: 0) + event.amount
+            )
           end
         end
 
@@ -688,7 +691,7 @@ RSpec.describe Ephesus::Core::Scene do
               state =
                 Ephesus::Core::State
                 .new(scene.state.to_h)
-                .set('checksum', 0xdeadbeef)
+                .set('checksum', value: 0xdeadbeef)
 
               ->(**) { state }
             end
@@ -715,7 +718,7 @@ RSpec.describe Ephesus::Core::Scene do
               state =
                 Ephesus::Core::State
                 .new(scene.state.to_h)
-                .set('checksum', 0xdeadbeef)
+                .set('checksum', value: 0xdeadbeef)
 
               lambda do |**|
                 @state = state
@@ -807,7 +810,7 @@ RSpec.describe Ephesus::Core::Scene do
               state =
                 Ephesus::Core::State
                 .new(scene.state.to_h)
-                .set('checksum', 0xdeadbeef)
+                .set('checksum', value: 0xdeadbeef)
 
               ->(**) { Cuprum::Result.new(value: state, error:) }
             end
@@ -842,7 +845,7 @@ RSpec.describe Ephesus::Core::Scene do
               state =
                 Ephesus::Core::State
                 .new(scene.state.to_h)
-                .set('checksum', 0xdeadbeef)
+                .set('checksum', value: 0xdeadbeef)
 
               lambda do |**|
                 @state = state
