@@ -5,6 +5,7 @@ module Ephesus
   # Implements functionality for Ephesus.
   module Core
     autoload :Actor,      'ephesus/core/actor'
+    autoload :Actors,     'ephesus/core/actors'
     autoload :Command,    'ephesus/core/command'
     autoload :Commands,   'ephesus/core/commands'
     autoload :Connection, 'ephesus/core/connection'
