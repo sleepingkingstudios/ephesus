@@ -45,6 +45,9 @@ module Ephesus::Core
       .freeze
     private_constant :DEFAULT_EVENT_HANDLERS
 
+    INSTANCE_VARIABLES_TO_INSPECT = %i[@id @type].freeze
+    private_constant :INSTANCE_VARIABLES_TO_INSPECT
+
     class << self
       # @return [true, false] true if the class is an abstract class, otherwise
       #   false.
@@ -157,6 +160,9 @@ module Ephesus::Core
 
     # @return [Ephesus::Core::State] the current state for the scene.
     attr_reader :state
+
+    # @return [Hash] a JSON-compatible representating of the scene.
+    def as_json = { 'id' => id, 'type' => type }
 
     # Handles the next queued event.
     #
@@ -284,6 +290,8 @@ module Ephesus::Core
     def handle_unsubscribe(subscriber:, **)
       subscriber.unsubscribe(self, **)
     end
+
+    def instance_variables_to_inspect = INSTANCE_VARIABLES_TO_INSPECT
 
     def resolve_failure(value)
       value.is_a?(Array) ? value : nil

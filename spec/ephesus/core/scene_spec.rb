@@ -535,6 +535,12 @@ RSpec.describe Ephesus::Core::Scene do
     end
   end
 
+  describe '#as_json' do
+    let(:expected) { { 'id' => scene.id, 'type' => scene.type } }
+
+    include_examples 'should define reader', :as_json, -> { expected }
+  end
+
   describe '#call' do
     let(:handled_events) { [] }
 
