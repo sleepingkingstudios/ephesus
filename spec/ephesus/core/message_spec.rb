@@ -3,11 +3,11 @@
 require 'ephesus/core/message'
 
 RSpec.describe Ephesus::Core::Message do
-  subject(:event) { described_class.new }
+  subject(:message) { described_class.new }
 
-  deferred_context 'with a custom event class' \
+  deferred_context 'with a custom message class' \
   do |class_name = 'Spec::CustomEvent'|
-    subject(:event) { described_class.new(custom_property: 'custom value') }
+    subject(:message) { described_class.new(custom_property: 'custom value') }
 
     let(:described_class) { Object.const_get(class_name) }
 
@@ -91,7 +91,7 @@ RSpec.describe Ephesus::Core::Message do
       it { expect(subclass.type).to be == 'spec.example_type' }
     end
 
-    wrap_deferred 'with a custom event class' do
+    wrap_deferred 'with a custom message class' do
       let(:attributes) { super().merge(custom_property: 'custom value') }
 
       it { expect(subclass).to be_a(Class) }
@@ -139,7 +139,7 @@ RSpec.describe Ephesus::Core::Message do
 
     include_examples 'should define class reader', :type, -> { expected }
 
-    wrap_deferred 'with a custom event class' do
+    wrap_deferred 'with a custom message class' do
       it { expect(described_class.type).to be == 'spec.custom' }
 
       context 'when the class defines a ::TYPE' do
@@ -151,10 +151,10 @@ RSpec.describe Ephesus::Core::Message do
       end
     end
 
-    context 'with a custom event class with excluded terms' do
+    context 'with a custom message class with excluded terms' do
       let(:expected) { 'spec.do_something.success' }
 
-      include_deferred 'with a custom event class',
+      include_deferred 'with a custom message class',
         'Spec::DoSomethingCommand::SuccessEvent'
 
       it { expect(described_class.type).to be == expected }
@@ -166,13 +166,13 @@ RSpec.describe Ephesus::Core::Message do
       "member not found: #{property_name.inspect}"
     end
 
-    it { expect(event).to respond_to(:[]).with(1).argument }
+    it { expect(message).to respond_to(:[]).with(1).argument }
 
     describe 'with nil' do
       let(:property_name) { nil }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
@@ -181,7 +181,7 @@ RSpec.describe Ephesus::Core::Message do
       let(:property_name) { Object.new.freeze }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
@@ -190,7 +190,7 @@ RSpec.describe Ephesus::Core::Message do
       let(:property_name) { '' }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
@@ -199,7 +199,7 @@ RSpec.describe Ephesus::Core::Message do
       let(:property_name) { :'' }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
@@ -208,7 +208,7 @@ RSpec.describe Ephesus::Core::Message do
       let(:property_name) { 'invalid_property' }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
@@ -217,7 +217,7 @@ RSpec.describe Ephesus::Core::Message do
       let(:property_name) { :invalid_property }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
@@ -226,17 +226,17 @@ RSpec.describe Ephesus::Core::Message do
       let(:property_name) { :object_id }
 
       it 'should raise an exception' do
-        expect { event[property_name] }
+        expect { message[property_name] }
           .to raise_error NoMethodError, error_message
       end
     end
 
-    wrap_deferred 'with a custom event class' do
+    wrap_deferred 'with a custom message class' do
       describe 'with an invalid String' do
         let(:property_name) { 'invalid_property' }
 
         it 'should raise an exception' do
-          expect { event[property_name] }
+          expect { message[property_name] }
             .to raise_error NoMethodError, error_message
         end
       end
@@ -245,23 +245,141 @@ RSpec.describe Ephesus::Core::Message do
         let(:property_name) { :invalid_property }
 
         it 'should raise an exception' do
-          expect { event[property_name] }
+          expect { message[property_name] }
             .to raise_error NoMethodError, error_message
         end
       end
 
       describe 'with a valid String' do
         let(:property_name) { 'custom_property' }
-        let(:expected)      { event.send(property_name) }
+        let(:expected)      { message.send(property_name) }
 
-        it { expect(event[property_name]).to be == expected }
+        it { expect(message[property_name]).to be == expected }
       end
 
       describe 'with a valid Symbol' do
         let(:property_name) { :custom_property }
-        let(:expected)      { event.send(property_name) }
+        let(:expected)      { message.send(property_name) }
 
-        it { expect(event[property_name]).to be == expected }
+        it { expect(message[property_name]).to be == expected }
+      end
+    end
+  end
+
+  describe '#as_json' do
+    let(:expected) { { 'type' => message.type } }
+
+    it { expect(message).to respond_to(:as_json).with(0).arguments }
+
+    it { expect(message.as_json).to be == expected }
+
+    wrap_deferred 'with a custom message class' do
+      subject(:message) { described_class.new(custom_property:) }
+
+      let(:custom_property) { 'custom value' }
+      let(:expected_value)  { custom_property }
+      let(:expected) do
+        super().merge('custom_property' => expected_value)
+      end
+
+      it { expect(message.as_json).to be == expected }
+
+      context 'with a nil value' do
+        let(:custom_property) { nil }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a false value' do
+        let(:custom_property) { false }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a true value' do
+        let(:custom_property) { true }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with an integer value' do
+        let(:custom_property) { 0 }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a float value' do
+        let(:custom_property) { 0.0 }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a String value' do
+        let(:custom_property) { 'custom value' }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a Symbol value' do
+        let(:custom_property) { :'custom value' }
+        let(:expected_value)  { custom_property.to_s }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with an Object value' do
+        let(:custom_property) { Object.new.freeze }
+        let(:expected_value)  { custom_property.to_s }
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a value that responds to :as_json' do
+        let(:custom_property) { Spec::CustomObject.new }
+        let(:expected_value)  { custom_property.as_json }
+
+        example_class 'Spec::CustomObject' do |klass|
+          klass.define_method(:as_json) { { 'name' => 'Spec::CustomObject' } }
+        end
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with an Array value' do
+        let(:custom_property) { Array.new(3) { Spec::CustomObject.new } }
+        let(:expected_value)  { custom_property.map(&:as_json) }
+
+        example_class 'Spec::CustomObject' do |klass|
+          klass.define_method(:as_json) { { 'name' => 'Spec::CustomObject' } }
+        end
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a Hash value with String keys' do
+        let(:custom_property) { { 'custom' => Spec::CustomObject.new } }
+        let(:expected_value)  { custom_property.transform_values(&:as_json) }
+
+        example_class 'Spec::CustomObject' do |klass|
+          klass.define_method(:as_json) { { 'name' => 'Spec::CustomObject' } }
+        end
+
+        it { expect(message.as_json).to be == expected }
+      end
+
+      context 'with a Hash value with Symbol keys' do
+        let(:custom_property) { { custom: Spec::CustomObject.new } }
+        let(:expected_value) do
+          custom_property
+            .transform_keys(&:to_s)
+            .transform_values(&:as_json)
+        end
+
+        example_class 'Spec::CustomObject' do |klass|
+          klass.define_method(:as_json) { { 'name' => 'Spec::CustomObject' } }
+        end
+
+        it { expect(message.as_json).to be == expected }
       end
     end
   end
@@ -271,25 +389,25 @@ RSpec.describe Ephesus::Core::Message do
 
     include_examples 'should define reader', :type, -> { expected }
 
-    wrap_deferred 'with a custom event class' do
-      it { expect(event.type).to be == 'spec.custom' }
+    wrap_deferred 'with a custom message class' do
+      it { expect(message.type).to be == 'spec.custom' }
 
       context 'when the class defines a ::TYPE' do
         let(:expected) { 'spec.type_from_constant' }
 
         before(:example) { described_class.const_set(:TYPE, expected) }
 
-        it { expect(event.type).to be == expected }
+        it { expect(message.type).to be == expected }
       end
     end
 
-    context 'with a custom event class with excluded terms' do
+    context 'with a custom message class with excluded terms' do
       let(:expected) { 'spec.do_something.success' }
 
-      include_deferred 'with a custom event class',
+      include_deferred 'with a custom message class',
         'Spec::DoSomethingCommand::SuccessEvent'
 
-      it { expect(event.type).to be == expected }
+      it { expect(message.type).to be == expected }
     end
   end
 end
