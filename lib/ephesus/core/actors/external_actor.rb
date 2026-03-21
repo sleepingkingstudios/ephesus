@@ -15,5 +15,8 @@ module Ephesus::Core::Actors
 
     # @return [Ephesus::Core::Connection] the server connection.
     attr_reader :connection
+
+    # @return [Hash] a JSON-compatible representating of the actor.
+    def as_json = super.merge('connection_id' => connection.id)
   end
 end

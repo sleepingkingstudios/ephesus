@@ -36,6 +36,12 @@ RSpec.describe Ephesus::Core::Actors::ExternalActor do
     end
   end
 
+  describe '#as_json' do
+    let(:expected) { { 'id' => actor.id, 'connection_id' => connection.id } }
+
+    include_examples 'should define reader', :as_json, -> { expected }
+  end
+
   describe '#connection' do
     include_examples 'should define reader', :connection, -> { connection }
   end
