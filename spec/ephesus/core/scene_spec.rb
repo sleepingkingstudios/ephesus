@@ -264,10 +264,157 @@ RSpec.describe Ephesus::Core::Scene do
     end
   end
 
+  describe '.handle_event?' do
+    it 'should define the class method' do
+      expect(described_class).to respond_to(:handle_event?).with(1).argument
+    end
+
+    describe 'with nil' do
+      it { expect(described_class.handle_event?(nil)).to be false }
+    end
+
+    describe 'with an Object' do
+      let(:event) { Object.new.freeze }
+
+      it { expect(described_class.handle_event?(event)).to be false }
+    end
+
+    describe 'with an empty String' do
+      it { expect(described_class.handle_event?('')).to be false }
+    end
+
+    describe 'with an empty Symbol' do
+      it { expect(described_class.handle_event?(:'')).to be false }
+    end
+
+    describe 'with an unhandled Command class' do
+      let(:command_class) { Spec::CustomCommand }
+
+      example_class 'Spec::CustomCommand', Ephesus::Core::Command
+
+      it { expect(described_class.handle_event?(command_class)).to be false }
+    end
+
+    describe 'with an unhandled Event' do
+      let(:event) { Spec::CustomEvent.new }
+
+      example_constant 'Spec::CustomEvent' do
+        Ephesus::Core::Message.define
+      end
+
+      it { expect(described_class.handle_event?(event)).to be false }
+    end
+
+    describe 'with an unhandled Event class' do
+      let(:event_class) { Spec::CustomEvent }
+
+      example_constant 'Spec::CustomEvent' do
+        Ephesus::Core::Message.define
+      end
+
+      it { expect(described_class.handle_event?(event_class)).to be false }
+    end
+
+    describe 'with an unhandled String' do
+      let(:event_type) { 'spec.custom' }
+
+      it { expect(described_class.handle_event?(event_type)).to be false }
+    end
+
+    describe 'with an unhandled Symbol' do
+      let(:event_type) { :'spec.custom' }
+
+      it { expect(described_class.handle_event?(event_type)).to be false }
+    end
+
+    wrap_deferred 'with a scene subclass' do
+      include_deferred 'when the scene handles events'
+
+      describe 'with an unhandled Command class' do
+        let(:command_class) { Spec::CustomCommand }
+
+        example_class 'Spec::CustomCommand', Ephesus::Core::Command
+
+        it { expect(described_class.handle_event?(command_class)).to be false }
+      end
+
+      describe 'with a handled Command Class' do
+        let(:command_class) { Spec::Commands::Push }
+
+        it { expect(described_class.handle_event?(command_class)).to be true }
+      end
+
+      describe 'with an unhandled Event' do
+        let(:event) { Spec::CustomEvent.new }
+
+        example_constant 'Spec::CustomEvent' do
+          Ephesus::Core::Message.define
+        end
+
+        it { expect(described_class.handle_event?(event)).to be false }
+      end
+
+      describe 'with a handled event' do
+        let(:event) { Spec::Commands::Push::Event.new }
+
+        example_constant 'Spec::Commands::Push::Event' do
+          Ephesus::Core::Message.define
+        end
+
+        it { expect(described_class.handle_event?(event)).to be true }
+      end
+
+      describe 'with an unhandled Event class' do
+        let(:event_class) { Spec::CustomEvent }
+
+        example_constant 'Spec::CustomEvent' do
+          Ephesus::Core::Message.define
+        end
+
+        it { expect(described_class.handle_event?(event_class)).to be false }
+      end
+
+      describe 'with a handled event class' do
+        let(:event_class) { Spec::Commands::Push::Event }
+
+        example_constant 'Spec::Commands::Push::Event' do
+          Ephesus::Core::Message.define
+        end
+
+        it { expect(described_class.handle_event?(event_class)).to be true }
+      end
+
+      describe 'with an unhandled String' do
+        let(:event_type) { 'spec.custom' }
+
+        it { expect(described_class.handle_event?(event_type)).to be false }
+      end
+
+      describe 'with a handled String' do
+        let(:event_type) { 'spec.events.pop' }
+
+        it { expect(described_class.handle_event?(event_type)).to be true }
+      end
+
+      describe 'with an unhandled Symbol' do
+        let(:event_type) { :'spec.custom' }
+
+        it { expect(described_class.handle_event?(event_type)).to be false }
+      end
+
+      describe 'with a handled Symbol' do
+        let(:event_type) { :'spec.events.pop' }
+
+        it { expect(described_class.handle_event?(event_type)).to be true }
+      end
+    end
+  end
+
   describe '.handled_events' do
     let(:default_event_handlers) do
       [
-        Ephesus::Core::Commands::ConnectActor
+        Ephesus::Core::Commands::ConnectActor,
+        Ephesus::Core::Commands::DisconnectActor
       ]
         .to_h { |command_class| [command_class.type, command_class] }
     end

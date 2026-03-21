@@ -5,6 +5,7 @@ require 'securerandom'
 require 'ephesus/core'
 require 'ephesus/core/command'
 require 'ephesus/core/commands/connect_actor'
+require 'ephesus/core/commands/disconnect_actor'
 require 'ephesus/core/messages/typing'
 require 'ephesus/core/messaging/publisher'
 
@@ -36,7 +37,10 @@ module Ephesus::Core
     class UnhandledSideEffectError < StandardError; end
 
     DEFAULT_EVENT_HANDLERS =
-      [Ephesus::Core::Commands::ConnectActor]
+      [
+        Ephesus::Core::Commands::ConnectActor,
+        Ephesus::Core::Commands::DisconnectActor
+      ]
       .to_h { |command_class| [command_class.type, command_class] }
       .freeze
     private_constant :DEFAULT_EVENT_HANDLERS
@@ -71,6 +75,28 @@ module Ephesus::Core
         validate_event_type(event_type)
 
         own_handled_events[event_type.to_s] = command_class
+      end
+
+      # @overload handle_event(command_class)
+      #   Checks if the scene can handle events of the specified class.
+      #
+      #   @param command_class [Class] the command class to check.
+      #
+      #   @return [true, false] true if the scene has a registered handler for
+      #     events matching the class type; otherwise false.
+      #
+      # @overload handle_event(event_type)
+      #   Checks if the scene can handle events of the specified type.
+      #
+      #   @param event_type [Event, String] the event or event type to check.
+      #
+      #   @return [true, false] true if the scene has a registered handler for
+      #     events matching the event type; otherwise false.
+      def handle_event?(event_or_command)
+        event_type = event_or_command
+        event_type = event_type.type if event_type.respond_to?(:type)
+
+        handled_events.key?(event_type.to_s)
       end
 
       # @return [Hash{String => Class}] the event types handled by the scene and
