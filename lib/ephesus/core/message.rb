@@ -16,15 +16,8 @@ module Ephesus::Core
       def included(other)
         super
 
-        if other.is_a?(Class)
-          other.include(Ephesus::Core::Messages::Definitions)
-          other.include(Ephesus::Core::Messages::Typing)
-        else
-          other.define_singleton_method(:included) do |inner|
-            inner.include(Ephesus::Core::Messages::Definitions)
-            inner.include(Ephesus::Core::Messages::Typing)
-          end
-        end
+        other.include Ephesus::Core::Messages::Definitions
+        other.include Ephesus::Core::Messages::Typing
       end
     end
 

@@ -57,14 +57,6 @@ module Ephesus::Core::Messages
         @type ||=
           const_defined?(:TYPE) ? self::TYPE : Typing.default_type_for(self)
       end
-
-      private
-
-      def included(other)
-        super
-
-        other.extend(ClassMethods)
-      end
     end
 
     class << self
