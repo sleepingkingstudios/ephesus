@@ -23,6 +23,41 @@ RSpec.describe Ephesus::Core::Messages::Notification do
     it { expect(described_class.members).to be == expected }
   end
 
+  describe '#as_json' do
+    let(:expected) do
+      {
+        'context'        => {},
+        'current_actor'  => nil,
+        'original_actor' => original_actor.as_json,
+        'type'           => message.type
+      }
+    end
+
+    it { expect(message).to respond_to(:as_json).with(0).arguments }
+
+    it { expect(message.as_json).to be == expected }
+
+    context 'when initialized with scene_type: value' do
+      let(:context) { { scene_type: 'spec.custom_type' } }
+      let(:options) { super().merge(context:) }
+      let(:expected) do
+        super().merge('context' => { 'scene_type' => context[:scene_type] })
+      end
+
+      it { expect(message.as_json).to be == expected }
+    end
+
+    context 'when initialized with current_actor: value' do
+      let(:current_actor) { Ephesus::Core::Actor.new }
+      let(:options)       { super().merge(current_actor:) }
+      let(:expected) do
+        super().merge('current_actor' => current_actor.as_json)
+      end
+
+      it { expect(message.as_json).to be == expected }
+    end
+  end
+
   describe '#context' do
     include_examples 'should define reader', :context, {}
 

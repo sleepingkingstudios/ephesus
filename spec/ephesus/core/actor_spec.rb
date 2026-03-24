@@ -22,6 +22,12 @@ RSpec.describe Ephesus::Core::Actor do
 
   include_deferred 'should subscribe to messages'
 
+  describe '#as_json' do
+    let(:expected) { { 'id' => actor.id } }
+
+    include_examples 'should define reader', :as_json, -> { expected }
+  end
+
   describe '#handle_notification' do
     let(:message)    { Ephesus::Core::Message.new }
     let(:subscriber) { Spec::Subscriber.new }

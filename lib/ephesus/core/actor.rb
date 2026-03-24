@@ -20,6 +20,9 @@ module Ephesus::Core
     # @return [String] a unique identifier for the actor.
     attr_reader :id
 
+    # @return [Hash] a JSON-compatible representating of the actor.
+    def as_json = { 'id' => id }
+
     # Handles notification messages from a Scene.
     #
     # By default, republishes the notification to any subscribers.

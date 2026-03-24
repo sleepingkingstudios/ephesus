@@ -6,9 +6,10 @@ require 'ephesus/core/rspec/deferred/messages_examples'
 RSpec.describe Ephesus::Core::Connection do
   include Ephesus::Core::RSpec::Deferred::MessagesExamples
 
-  subject(:connection) { described_class.new(format:) }
+  subject(:connection) { described_class.new(**constructor_options) }
 
-  let(:format) { 'spec.example_format' }
+  let(:format)              { 'spec.example_format' }
+  let(:constructor_options) { { format: } }
 
   example_class 'Spec::Subscriber' do |klass|
     klass.define_method(:messages) { @messages ||= [] }
@@ -23,6 +24,12 @@ RSpec.describe Ephesus::Core::Connection do
   end
 
   include_deferred 'should publish messages'
+
+  describe '::FormatNotFoundError' do
+    include_examples 'should define constant',
+      :FormatNotFoundError,
+      -> { be_a(Class).and(be < StandardError) }
+  end
 
   describe '.new' do
     it 'should define the constructor' do
@@ -51,6 +58,82 @@ RSpec.describe Ephesus::Core::Connection do
 
   describe '#format' do
     include_examples 'should define reader', :format
+  end
+
+  describe '#format_options' do
+    include_examples 'should define private reader', :format_options, {}
+  end
+
+  describe '#formats' do
+    include_examples 'should define private reader', :formats
+
+    context 'when initialized with formats: value' do
+      let(:formats) do
+        { 'spec.custom' => Spec::CustomFormatter }
+      end
+      let(:constructor_options) { super().merge(formats:) }
+
+      example_class 'Spec::CustomFormatter'
+
+      it { expect(connection.send(:formats)).to be == formats }
+    end
+  end
+
+  describe '#formatter' do
+    let(:error_message) do
+      "Formatter not found with format #{connection.format.inspect}"
+    end
+
+    it { expect(connection).to respond_to(:formatter).with(0).arguments }
+
+    context 'when there is not a matching formatter' do
+      it 'should raise an exception' do
+        expect { connection.formatter }
+          .to raise_error described_class::FormatNotFoundError, error_message
+      end
+    end
+
+    context 'when initialized with formats: value' do
+      let(:formats) do
+        { 'spec.custom' => Spec::CustomFormatter }
+      end
+      let(:constructor_options) { super().merge(formats:) }
+
+      example_class 'Spec::CustomFormatter' do |klass|
+        klass.define_method :initialize do |**options|
+          @options = options
+        end
+
+        klass.attr_reader :options
+      end
+
+      context 'when there is not a matching formatter' do
+        it 'should raise an exception' do
+          expect { connection.formatter }
+            .to raise_error described_class::FormatNotFoundError, error_message
+        end
+      end
+
+      context 'when there is a matching formatter' do
+        let(:format) { 'spec.custom' }
+
+        it { expect(connection.formatter).to be_a Spec::CustomFormatter }
+
+        it { expect(connection.formatter.options).to be == {} }
+
+        context 'when the connection defines format options' do
+          let(:format_options) { { locale: 'swedish-chef' } }
+
+          before(:example) do
+            allow(connection) # rubocop:disable RSpec/SubjectStub
+              .to receive(:format_options)
+              .and_return(format_options)
+          end
+
+          it { expect(connection.formatter.options).to be == format_options }
+        end
+      end
+    end
   end
 
   describe '#handle_input' do
