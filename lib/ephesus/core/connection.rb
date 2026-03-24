@@ -2,13 +2,22 @@
 
 require 'securerandom'
 
+require 'plumbum'
+
 require 'ephesus/core'
 require 'ephesus/core/messaging/publisher'
 
 module Ephesus::Core
   # Class representing an external connection to the server.
   class Connection
+    include Plumbum::Consumer
+    prepend Plumbum::Parameters
     include Ephesus::Core::Messaging::Publisher
+
+    # Exception raised when a matching formatter is not defined.
+    class FormatNotFoundError < StandardError; end
+
+    dependency :formats, default: {}, private: true
 
     # @param format [String] the configured format for the connection.
     def initialize(format:)
@@ -24,6 +33,23 @@ module Ephesus::Core
 
     # @return [String] a unique identifier for the connection.
     attr_reader :id
+
+    # Finds and returns a configured formatter for the connection.
+    #
+    # @return [Ephesus::Core::Formats::Formatter] the configured formatter.
+    #
+    # @raise [FormatNotFoundError] if there is not formatter matching the
+    #   configured format.
+    def formatter
+      @formatter ||=
+        formats
+        .fetch(format) do
+          error_message = "Formatter not found with format #{format.inspect}"
+
+          raise FormatNotFoundError, error_message
+        end
+        .new(**format_options)
+    end
 
     # Handles input events received from the server.
     #
@@ -43,5 +69,9 @@ module Ephesus::Core
     #
     # @return [void]
     def handle_notification(_message) = nil
+
+    private
+
+    def format_options = {}
   end
 end

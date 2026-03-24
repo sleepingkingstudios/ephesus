@@ -6,6 +6,9 @@ gemspec
 
 ruby '4.0.2'
 
+gem 'plumbum',
+  git: 'https://github.com/sleepingkingstudios/plumbum'
+
 gem 'sleeping_king_studios-tools',
   git: 'https://github.com/sleepingkingstudios/sleeping_king_studios-tools'
 
