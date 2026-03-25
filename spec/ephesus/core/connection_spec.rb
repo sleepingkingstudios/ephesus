@@ -11,6 +11,10 @@ RSpec.describe Ephesus::Core::Connection do
   let(:format)              { 'spec.example_format' }
   let(:constructor_options) { { format: } }
 
+  example_class 'Spec::Publisher' do |klass|
+    klass.include Ephesus::Core::Messaging::Publisher
+  end
+
   example_class 'Spec::Subscriber' do |klass|
     klass.define_method(:messages) { @messages ||= [] }
 
@@ -24,6 +28,8 @@ RSpec.describe Ephesus::Core::Connection do
   end
 
   include_deferred 'should publish messages'
+
+  include_deferred 'should subscribe to messages'
 
   describe '::FormatNotFoundError' do
     include_examples 'should define constant',
@@ -45,14 +51,98 @@ RSpec.describe Ephesus::Core::Connection do
   end
 
   describe '#actor=' do
-    let(:actor) { Object.new.freeze }
+    let(:message) { Ephesus::Core::Message.new }
+
+    before(:example) do
+      allow(connection).to receive(:handle_notification) # rubocop:disable RSpec/SubjectStub
+    end
 
     include_examples 'should define writer', :actor=
 
-    it 'should set the actor' do
-      expect { connection.actor = actor }
-        .to change(connection, :actor)
-        .to be actor
+    describe 'with nil' do
+      let(:error_message) do
+        SleepingKingStudios::Tools::Toolbelt
+          .instance
+          .assertions
+          .error_message_for(
+            :instance_of,
+            as:       'actor',
+            expected: Ephesus::Core::Actor
+          )
+      end
+
+      it 'should raise an exception' do
+        expect { connection.actor = nil }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an Object' do
+      let(:error_message) do
+        SleepingKingStudios::Tools::Toolbelt
+          .instance
+          .assertions
+          .error_message_for(
+            :instance_of,
+            as:       'actor',
+            expected: Ephesus::Core::Actor
+          )
+      end
+
+      it 'should raise an exception' do
+        expect { connection.actor = Object.new.freeze }
+          .to raise_error ArgumentError, error_message
+      end
+    end
+
+    describe 'with an Actor' do
+      let(:actor) { Ephesus::Core::Actor.new }
+
+      it { expect(connection.actor = actor).to be actor }
+
+      it 'should set the actor' do
+        expect { connection.actor = actor }
+          .to change(connection, :actor)
+          .to be actor
+      end
+
+      it 'should subscribe the connection to actor notifications' do
+        connection.actor = actor
+
+        actor.publish(message, channel: :notifications)
+
+        expect(connection).to have_received(:handle_notification).with(message) # rubocop:disable RSpec/SubjectStub
+      end
+
+      context 'when the connection already references an actor' do
+        let(:original_actor) { Ephesus::Core::Actor.new }
+
+        before(:example) { connection.actor = original_actor }
+
+        it 'should set the actor' do
+          expect { connection.actor = actor }
+            .to change(connection, :actor)
+            .to be actor
+        end
+
+        it 'should subscribe the connection to actor notifications' do
+          connection.actor = actor
+
+          actor.publish(message, channel: :notifications)
+
+          expect(connection) # rubocop:disable RSpec/SubjectStub
+            .to have_received(:handle_notification)
+            .with(message)
+        end
+
+        it 'should unsubscribe from the previous actor' do
+          connection.actor = actor
+
+          original_actor.publish(message, channel: :notifications)
+
+          expect(connection).not_to have_received(:handle_notification) # rubocop:disable RSpec/SubjectStub
+        end
+      end
     end
   end
 
@@ -161,13 +251,79 @@ RSpec.describe Ephesus::Core::Connection do
   end
 
   describe '#handle_notification' do
-    let(:message) { Ephesus::Core::Message.new }
+    let(:actor) { Ephesus::Core::Actor.new }
+    let(:notification) do
+      Ephesus::Core::Messages::Notification.new(original_actor: actor)
+    end
 
     it 'should define the method' do
       expect(connection).to respond_to(:handle_notification).with(1).argument
     end
 
-    it { expect(connection.handle_notification(message)).to be nil }
+    context 'when there is not a matching formatter' do
+      let(:error_message) do
+        "Formatter not found with format #{connection.format.inspect}"
+      end
+
+      it 'should raise an exception' do
+        expect { connection.handle_notification(notification) }
+          .to raise_error described_class::FormatNotFoundError, error_message
+      end
+    end
+
+    context 'when there is a matching formatter' do
+      let(:format) { 'spec.custom' }
+      let(:formats) do
+        { 'spec.custom' => Spec::CustomFormatter }
+      end
+      let(:constructor_options) { super().merge(formats:) }
+      let(:result) { Cuprum::Result.new }
+      let(:formatter) do
+        instance_double(Spec::CustomFormatter, format_output: result)
+      end
+      let(:subscriber) { Spec::Subscriber.new }
+
+      example_class 'Spec::CustomFormatter' do |klass|
+        klass.define_method(:format_output) { |*| nil }
+      end
+
+      before(:example) do
+        allow(Spec::CustomFormatter).to receive(:new).and_return(formatter)
+
+        connection.add_subscription(subscriber, channel: :output)
+      end
+
+      context 'when the formatter returns a failing result' do
+        let(:error)  { Cuprum::Error.new(message: 'Something went wrong') }
+        let(:result) { Cuprum::Result.new(error:) }
+
+        it 'should raise an exception' do
+          expect { connection.handle_notification(notification) }
+            .to raise_error RuntimeError, error.message
+        end
+
+        it 'should not publish a message' do
+          connection.handle_notification(notification)
+        rescue RuntimeError
+          expect(subscriber.messages).to be == []
+        end
+      end
+
+      context 'when the formatter returns a passing result' do
+        let(:message) { Spec::OutputMessage.new(ok: true) }
+        let(:result)  { Cuprum::Result.new(value: message) }
+
+        example_constant 'Spec::OutputMessage' do
+          Ephesus::Core::Message.define(:ok)
+        end
+
+        it 'should publish the formatted message' do
+          connection.handle_notification(notification)
+
+          expect(subscriber.messages).to be == [message]
+        end
+      end
+    end
   end
 
   describe '#id' do
