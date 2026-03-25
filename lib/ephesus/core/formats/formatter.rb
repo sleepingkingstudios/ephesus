@@ -20,10 +20,29 @@ module Ephesus::Core::Formats
       input_formatter_for(scene:, **).call(event)
     end
 
+    # Converts a notification to a formatted output event.
+    #
+    # @param notification [Ephesus::Core::Messages::Notification] the
+    #   notification to process.
+    # @param options [Hash] additional options for parsing outputs.
+    #
+    # @return [Cuprum::Result<Ephesus::Core::Message>] the formatted event.
+    #
+    # @return
+    #   [Cuprum::Result<Ephesus::Core::Formats::Errors::UnhandledNotification]
+    #   if the formatter is unable to process the notification..
+    def format_output(notification:, **)
+      output_formatter_for(**).call(notification)
+    end
+
     private
 
     def input_formatter_for(scene:, **)
       Ephesus::Core::Formats::Commands::FormatInput.new(scene:, **)
+    end
+
+    def output_formatter_for(**)
+      Ephesus::Core::Formats::Commands::FormatOutput.new(**)
     end
   end
 end

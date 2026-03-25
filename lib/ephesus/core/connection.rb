@@ -13,6 +13,7 @@ module Ephesus::Core
     include Plumbum::Consumer
     prepend Plumbum::Parameters
     include Ephesus::Core::Messaging::Publisher
+    include Ephesus::Core::Messaging::Subscriber
 
     # Exception raised when a matching formatter is not defined.
     class FormatNotFoundError < StandardError; end
@@ -26,13 +27,32 @@ module Ephesus::Core
     end
 
     # @return [Ephesus::Core::Actor] the game actor defined for the connection.
-    attr_accessor :actor
+    attr_reader :actor
 
     # @return [String] the configured format for the connection.
     attr_reader :format
 
     # @return [String] a unique identifier for the connection.
     attr_reader :id
+
+    # Sets the actor for the connection and subscribes to notifications.
+    #
+    # @param actor [Ephesus::Core::Actor] the actor to set.
+    #
+    # @return [Ephesus::Core::Actor] the set actor.
+    def actor=(value)
+      tools.assertions.validate_instance_of(
+        value,
+        as:       'actor',
+        expected: Ephesus::Core::Actor
+      )
+
+      unsubscribe(actor) if actor
+
+      @actor = value
+
+      subscribe_to_actor
+    end
 
     # Finds and returns a configured formatter for the connection.
     #
@@ -68,10 +88,26 @@ module Ephesus::Core
     #   notification.
     #
     # @return [void]
-    def handle_notification(_message) = nil
+    def handle_notification(notification)
+      result = formatter.format_output(notification:)
+
+      raise result.error.message if result.failure?
+
+      publish(result.value, channel: :output)
+    end
 
     private
 
     def format_options = {}
+
+    def subscribe_to_actor
+      subscribe(
+        actor,
+        channel:     :notifications,
+        method_name: :handle_notification
+      )
+    end
+
+    def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
   end
 end
