@@ -6,6 +6,9 @@ require 'ephesus/core/formats/commands/format_input'
 module Ephesus::Core::Formats
   # Defines methods for encapsulating IO processing for a single format.
   module Formatter
+    # @param format [String] the configured format for the connection.
+    def format = Ephesus::Core::Formats::DEFAULT_FORMAT
+
     # Converts an input event for the current format to a scene input event.
     #
     # @param event [Ephesus::Core::Message] the input event to process.
@@ -17,7 +20,7 @@ module Ephesus::Core::Formats
     # @return [Cuprum::Result<Ephesus::Core::Formats::Errors::UnhandledEvent] if
     #   the scene is not configured to process the formatted event.
     def format_input(event:, scene:, **)
-      input_formatter_for(scene:, **).call(event)
+      input_formatter_for(format:, scene:, **).call(event)
     end
 
     # Converts a notification to a formatted output event.
@@ -32,7 +35,7 @@ module Ephesus::Core::Formats
     #   [Cuprum::Result<Ephesus::Core::Formats::Errors::UnhandledNotification]
     #   if the formatter is unable to process the notification..
     def format_output(notification:, **)
-      output_formatter_for(**).call(notification)
+      output_formatter_for(format:, **).call(notification)
     end
 
     private

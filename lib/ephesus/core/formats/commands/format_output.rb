@@ -3,6 +3,8 @@
 require 'cuprum/command'
 
 require 'ephesus/core/formats/commands'
+require 'ephesus/core/formats/error_message'
+require 'ephesus/core/messages/error_notification'
 
 module Ephesus::Core::Formats::Commands
   # Converts an output notification to an output event for the current format.
@@ -29,9 +31,24 @@ module Ephesus::Core::Formats::Commands
     # @return [Hash] additional options for parsing notifications.
     attr_reader :options
 
+    def format = options.fetch(:format, Ephesus::Core::Formats::DEFAULT_FORMAT)
+
     private
 
+    def format_error_notification(notification)
+      Ephesus::Core::Formats::ErrorMessage.new(
+        error_id: notification.error_id,
+        details:  notification.details,
+        format:,
+        message:  notification.message
+      )
+    end
+
     def process(notification)
+      if notification.is_a?(Ephesus::Core::Messages::ErrorNotification)
+        return format_error_notification(notification)
+      end
+
       failure(unhandled_notification_error(notification))
     end
 
