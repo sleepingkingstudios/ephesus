@@ -31,6 +31,12 @@ RSpec.describe Ephesus::Core::Connection do
 
   include_deferred 'should subscribe to messages'
 
+  describe '::FormatErrorNotificationError' do
+    include_examples 'should define constant',
+      :FormatErrorNotificationError,
+      -> { be_a(Class).and(be < StandardError) }
+  end
+
   describe '::FormatNotFoundError' do
     include_examples 'should define constant',
       :FormatNotFoundError,
@@ -279,7 +285,11 @@ RSpec.describe Ephesus::Core::Connection do
       let(:constructor_options) { super().merge(formats:) }
       let(:result) { Cuprum::Result.new }
       let(:formatter) do
-        instance_double(Spec::CustomFormatter, format_output: result)
+        instance_double(
+          Spec::CustomFormatter,
+          format:,
+          format_output: result
+        )
       end
       let(:subscriber) { Spec::Subscriber.new }
 
@@ -299,13 +309,48 @@ RSpec.describe Ephesus::Core::Connection do
 
         it 'should raise an exception' do
           expect { connection.handle_notification(notification) }
-            .to raise_error RuntimeError, error.message
+            .to raise_error(
+              described_class::FormatErrorNotificationError,
+              error.message
+            )
         end
 
         it 'should not publish a message' do
           connection.handle_notification(notification)
-        rescue RuntimeError
+        rescue described_class::FormatErrorNotificationError
           expect(subscriber.messages).to be == []
+        end
+
+        context 'when the formatter can format an ErrorNotification' do
+          let(:expected_attributes) do
+            {
+              format:,
+              error_id: an_instance_of(String),
+              message:  error.message,
+              details:  { 'type' => error.type }
+            }
+          end
+
+          before(:example) do
+            allow(formatter).to receive(:format_output) do |notification:, **|
+              if notification.is_a?(Ephesus::Core::Messages::ErrorNotification)
+                next Ephesus::Core::Formats::Commands::FormatOutput
+                  .new(format:)
+                  .call(notification)
+              end
+
+              result
+            end
+          end
+
+          it 'should publish the error message', :aggregate_failures do
+            connection.handle_notification(notification)
+
+            expect(subscriber.messages.size).to be 1
+            expect(subscriber.messages.first)
+              .to be_a(Ephesus::Core::Formats::ErrorMessage)
+              .and have_attributes(**expected_attributes)
+          end
         end
       end
 
