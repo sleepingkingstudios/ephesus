@@ -16,6 +16,12 @@ RSpec.describe Ephesus::Core::Formats::Formatter do
     it { expect(described_class).to be_constructible.with(0).arguments }
   end
 
+  describe '#format' do
+    let(:expected) { Ephesus::Core::Formats::DEFAULT_FORMAT }
+
+    include_examples 'should define reader', :format, -> { expected }
+  end
+
   describe '#format_input' do
     let(:event) { Ephesus::Core::Message.new }
     let(:scene) { Ephesus::Core::Scene.new }
@@ -74,19 +80,19 @@ RSpec.describe Ephesus::Core::Formats::Formatter do
 
     context 'with a custom format command' do
       let(:expected_value) do
-        Spec::InputEvent.new(ok: true)
+        Spec::InputEvent.new(format: formatter.format, ok: true)
       end
 
       example_class 'Spec::FormatInput',
         Ephesus::Core::Formats::Commands::FormatOutput \
       do |klass|
         klass.define_method(:process) do |_|
-          Spec::InputEvent.new(ok: true)
+          Spec::InputEvent.new(format: options[:format], ok: true)
         end
       end
 
       example_constant 'Spec::InputEvent' do
-        Ephesus::Core::Message.define(:ok)
+        Ephesus::Core::Message.define(:format, :ok)
       end
 
       before(:example) do
@@ -128,21 +134,43 @@ RSpec.describe Ephesus::Core::Formats::Formatter do
       end
     end
 
+    describe 'with an error notification' do
+      let(:message) { 'Something went wrong.' }
+      let(:notification) do
+        Ephesus::Core::Messages::ErrorNotification
+          .new(original_actor: actor, message:)
+      end
+      let(:expected_value) do
+        Ephesus::Core::Formats::ErrorMessage.new(
+          details:  notification.details,
+          error_id: notification.error_id,
+          format:   formatter.format,
+          message:  notification.message
+        )
+      end
+
+      it 'should return a passing result' do
+        expect(formatter.format_output(notification:))
+          .to be_a_passing_result
+          .with_value(expected_value)
+      end
+    end
+
     context 'with a custom format command' do
       let(:expected_value) do
-        Spec::OutputMessage.new(ok: true)
+        Spec::OutputMessage.new(format: formatter.format, ok: true)
       end
 
       example_class 'Spec::FormatOutput',
         Ephesus::Core::Formats::Commands::FormatOutput \
       do |klass|
         klass.define_method(:process) do |_|
-          Spec::OutputMessage.new(ok: true)
+          Spec::OutputMessage.new(format: options[:format], ok: true)
         end
       end
 
       example_constant 'Spec::OutputMessage' do
-        Ephesus::Core::Message.define(:ok)
+        Ephesus::Core::Message.define(:format, :ok)
       end
 
       before(:example) do
