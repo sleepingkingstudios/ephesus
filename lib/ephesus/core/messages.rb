@@ -7,6 +7,8 @@ module Ephesus::Core
   module Messages
     autoload :Definitions,
       'ephesus/core/messages/definitions'
+    autoload :ErrorNotification,
+      'ephesus/core/messages/error_notification'
     autoload :LazyConnectionMessage,
       'ephesus/core/messages/lazy_connection_message'
     autoload :Notification,
