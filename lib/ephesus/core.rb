@@ -14,6 +14,7 @@ module Ephesus
     autoload :Messages,   'ephesus/core/messages'
     autoload :Messaging,  'ephesus/core/messaging'
     autoload :Scene,      'ephesus/core/scene'
+    autoload :Scenes,     'ephesus/core/scenes'
     autoload :State,      'ephesus/core/state'
   end
 end
