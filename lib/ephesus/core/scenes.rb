@@ -7,6 +7,7 @@ module Ephesus::Core
   module Scenes
     autoload :Builder,       'ephesus/core/scenes/builder'
     autoload :EventHandling, 'ephesus/core/scenes/event_handling'
+    autoload :Pool,          'ephesus/core/scenes/pool'
     autoload :SideEffects,   'ephesus/core/scenes/side_effects'
   end
 end
