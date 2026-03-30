@@ -182,5 +182,31 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
         it { expect(pool.get(**options)).to be scene }
       end
     end
+
+    context 'when multiple threads request a scene' do
+      let(:values) { [] }
+      let(:threads) do
+        Array.new(3) do |index|
+          Thread.new { values[index] = pool.get }
+        end
+      end
+
+      before(:example) do
+        scenes = [scene, Ephesus::Core::Scene.new, Ephesus::Core::Scene.new]
+
+        allow(builder).to receive(:call) do
+          sleep 1
+
+          Cuprum::Result.new(value: scenes.shift)
+        end
+      end
+
+      it 'should not generate multiple scenes', :aggregate_failures do
+        threads.map(&:join)
+
+        expect(values.size).to be 3
+        expect(values).to all be scene
+      end
+    end
   end
 end

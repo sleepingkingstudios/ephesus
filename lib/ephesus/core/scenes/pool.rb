@@ -22,21 +22,25 @@ module Ephesus::Core::Scenes
 
     # Finds or creates a scene matching the given options.
     def get(**options)
-      group = grouped[options.hash]
-      scene = group.first
+      semaphore.synchronize do
+        group = grouped[options.hash]
+        scene = group.first
 
-      return scene if scene
+        return scene if scene
 
-      scene = build_scene(**options)
+        scene = build_scene(**options)
 
-      group << scene
+        group << scene
 
-      scene
+        scene
+      end
     end
 
     private
 
     attr_reader :grouped
+
+    attr_reader :semaphore
 
     def build_error_message_for(error:, options:)
       message = 'unable to build scene'
