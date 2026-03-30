@@ -52,4 +52,12 @@ RSpec.describe Ephesus::Core::Actor do
       :id,
       -> { be_a(String).and match(expected_format) }
   end
+
+  describe '#inspect' do
+    let(:expected) do
+      "#<#{described_class.name} id=#{actor.id.inspect}>"
+    end
+
+    it { expect(actor.inspect).to be == expected }
+  end
 end

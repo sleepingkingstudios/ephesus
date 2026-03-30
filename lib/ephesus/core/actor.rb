@@ -35,5 +35,18 @@ module Ephesus::Core
 
       nil
     end
+
+    # @return [String] a human-readable representation of the actor.
+    def inspect
+      tools
+        .object_tools
+        .format_inspect(self, address: false, properties: properties_to_inspect)
+    end
+
+    private
+
+    def properties_to_inspect = %i[id]
+
+    def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
   end
 end
