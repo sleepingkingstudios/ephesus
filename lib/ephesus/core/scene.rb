@@ -6,6 +6,7 @@ require 'ephesus/core'
 require 'ephesus/core/messages/typing'
 require 'ephesus/core/messaging/publisher'
 require 'ephesus/core/scenes/event_handling'
+require 'ephesus/core/scenes/side_effects'
 
 module Ephesus::Core
   # Interactive scene that enqueues and processes input events.
@@ -21,13 +22,11 @@ module Ephesus::Core
   # updated state and an optional list of side effects (such as notifying
   # listeners or pushing more events onto the stack). A failed result may also
   # return a list of side effects.
-  class Scene # rubocop:disable Metrics/ClassLength
+  class Scene
     include Ephesus::Core::Messages::Typing
     include Ephesus::Core::Messaging::Publisher
     include Ephesus::Core::Scenes::EventHandling
-
-    # Exception raised when a handler is not found for a side effect.
-    class UnhandledSideEffectError < StandardError; end
+    include Ephesus::Core::Scenes::SideEffects
 
     INSTANCE_VARIABLES_TO_INSPECT = %i[@id @type].freeze
     private_constant :INSTANCE_VARIABLES_TO_INSPECT
@@ -105,82 +104,8 @@ module Ephesus::Core
       @state.get('actors').each_value(&)
     end
 
-    def handle_notify(notification) # rubocop:disable Metrics/MethodLength
-      context = notification.context.merge(scene_type: type)
-
-      if notification.current_actor
-        notification
-          .current_actor
-          .handle_notification(notification.with(context:))
-      else
-        each_actor do |actor|
-          actor.handle_notification(
-            notification.with(current_actor: actor, context:)
-          )
-        end
-      end
-    end
-
-    def handle_push_event(event)
-      event_stack << event
-    end
-
-    def handle_side_effect(side_effect, *details)
-      case side_effect
-      when :notify      then handle_notify(*details)
-      when :push_event  then handle_push_event(*details)
-      when :subscribe   then handle_subscribe(**details.first)
-      when :unsubscribe then handle_unsubscribe(**details.first)
-      else
-        raise UnhandledSideEffectError,
-          unhandled_side_effect_message_for(side_effect, details)
-      end
-    end
-
-    def handle_side_effects(side_effects)
-      side_effects&.each do |maybe_side_effect|
-        next unless maybe_side_effect.is_a?(Array)
-        next unless maybe_side_effect.first.is_a?(Symbol)
-
-        side_effect, *details = maybe_side_effect
-
-        handle_side_effect(side_effect, *details)
-      end
-    end
-
-    def handle_subscribe(subscriber:, **)
-      subscriber.subscribe(self, **)
-    end
-
-    def handle_unsubscribe(subscriber:, **)
-      subscriber.unsubscribe(self, **)
-    end
-
     def instance_variables_to_inspect = INSTANCE_VARIABLES_TO_INSPECT
 
-    def resolve_failure(value)
-      value.is_a?(Array) ? value : nil
-    end
-
-    def resolve_success(value)
-      return value if value.is_a?(Ephesus::Core::State)
-
-      return @state unless value.is_a?(Array)
-
-      head, *tail = value
-
-      return [head, tail] if head.is_a?(Ephesus::Core::State)
-
-      [@state, [head, *tail]]
-    end
-
     def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
-
-    def unhandled_side_effect_message_for(side_effect, details)
-      details_data = details.map(&:inspect).join(', ')
-
-      "no handler found for side effect #{side_effect.inspect} " \
-        "(#{details_data})"
-    end
   end
 end

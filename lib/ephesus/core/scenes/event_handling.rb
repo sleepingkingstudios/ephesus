@@ -146,6 +146,22 @@ module Ephesus::Core::Scenes
       result
     end
 
+    def resolve_failure(value)
+      value.is_a?(Array) ? value : nil
+    end
+
+    def resolve_success(value)
+      return value if value.is_a?(Ephesus::Core::State)
+
+      return @state unless value.is_a?(Array)
+
+      head, *tail = value
+
+      return [head, tail] if head.is_a?(Ephesus::Core::State)
+
+      [@state, [head, *tail]]
+    end
+
     def unhandled_event_message_for(event)
       data    = event.to_h
       message = "no event handler found for event #{event.type}"
