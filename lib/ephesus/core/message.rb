@@ -44,6 +44,13 @@ module Ephesus::Core
       end
     end
 
+    # @return [String] a human-readable representation of the message.
+    def inspect
+      tools
+        .object_tools
+        .format_inspect(self, address: false, properties: properties_to_inspect)
+    end
+
     # @return [String] the defined type for the message.
     def type = self.class.type
 
@@ -63,5 +70,9 @@ module Ephesus::Core
         value.to_s
       end
     end
+
+    def properties_to_inspect = members
+
+    def tools = SleepingKingStudios::Tools::Toolbelt.instance
   end
 end

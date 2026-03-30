@@ -384,6 +384,22 @@ RSpec.describe Ephesus::Core::Message do
     end
   end
 
+  describe '#inspect' do
+    let(:expected) do
+      "#<#{described_class.name}>"
+    end
+
+    it { expect(message.inspect).to be == expected }
+
+    wrap_deferred 'with a custom message class' do
+      let(:expected) do
+        "#{super()[...-1]} custom_property=#{message.custom_property.inspect}>"
+      end
+
+      it { expect(message.inspect).to be == expected }
+    end
+  end
+
   describe '#type' do
     let(:expected) { 'ephesus.core' }
 
