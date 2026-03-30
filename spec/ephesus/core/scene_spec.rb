@@ -1343,6 +1343,26 @@ RSpec.describe Ephesus::Core::Scene do
       -> { be_a(String).and match(expected_format) }
   end
 
+  describe '#inspect' do
+    let(:expected) do
+      "#<#{scene.class.name} id=#{scene.id.inspect} type=#{scene.type.inspect}>"
+    end
+
+    it { expect(scene.inspect).to be == expected }
+
+    wrap_deferred 'with a scene subclass' do
+      let(:expected) { "#{super()[...-1]} custom=true>" }
+
+      before(:example) do
+        Spec::CustomScene.define_method(:properties_to_inspect) do
+          super().merge(custom: true)
+        end
+      end
+
+      it { expect(scene.inspect).to be == expected }
+    end
+  end
+
   describe '#state' do
     let(:expected) { { 'actors' => {} } }
 

@@ -28,9 +28,6 @@ module Ephesus::Core
     include Ephesus::Core::Scenes::EventHandling
     include Ephesus::Core::Scenes::SideEffects
 
-    INSTANCE_VARIABLES_TO_INSPECT = %i[@id @type].freeze
-    private_constant :INSTANCE_VARIABLES_TO_INSPECT
-
     # @param [Hash] the initial state for the scene. Will be merged onto the
     #   defined default state, if any.
     def initialize(state: {})
@@ -76,6 +73,13 @@ module Ephesus::Core
     def enqueue_event(event) = event_queue << event
     alias enqueue enqueue_event
 
+    # @return [String] a human-readable representation of the scene.
+    def inspect
+      tools
+        .object_tools
+        .format_inspect(self, address: false, properties: properties_to_inspect)
+    end
+
     # @return [String] the type identifier for the scene.
     def type = self.class.type
 
@@ -104,7 +108,7 @@ module Ephesus::Core
       @state.get('actors').each_value(&)
     end
 
-    def instance_variables_to_inspect = INSTANCE_VARIABLES_TO_INSPECT
+    def properties_to_inspect = { id:, type: }
 
     def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
   end
