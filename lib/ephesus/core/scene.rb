@@ -34,9 +34,7 @@ module Ephesus::Core
       @id          = SecureRandom.uuid_v7
       @event_queue = []
       @event_stack = []
-      @state       = build_state(
-        default_state.merge(tools.hash_tools.convert_keys_to_strings(state))
-      )
+      @state       = build_state(state)
     end
 
     # @return [String] a unique identifier for the scene.
@@ -90,6 +88,7 @@ module Ephesus::Core
     attr_reader :event_stack
 
     def build_state(state)
+      state       = tools.hash_tools.convert_keys_to_strings(state)
       state_class =
         if self.class.const_defined?(:State)
           self.class.const_get(:State)
@@ -97,7 +96,7 @@ module Ephesus::Core
           Ephesus::Core::State
         end
 
-      state_class.new(state)
+      state_class.new(default_state.merge(state))
     end
 
     def default_state = { 'actors' => {} }
