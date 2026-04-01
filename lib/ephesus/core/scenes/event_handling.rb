@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'ephesus/core/abstract'
 require 'ephesus/core/command'
 require 'ephesus/core/commands/connect_actor'
 require 'ephesus/core/commands/disconnect_actor'
@@ -8,10 +9,8 @@ require 'ephesus/core/scenes'
 module Ephesus::Core::Scenes
   # Functionality for registering and calling event handlers for a scene.
   module EventHandling
-    extend SleepingKingStudios::Tools::Toolbox::Mixin
-
-    # Exception raised when setting a static option on an abstract class.
-    class AbstractClassError < StandardError; end
+    extend  SleepingKingStudios::Tools::Toolbox::Mixin
+    include Ephesus::Core::Abstract
 
     # Exception raised when a handler is not found for an event.
     class UnhandledEventError < StandardError; end
@@ -25,10 +24,6 @@ module Ephesus::Core::Scenes
         ]
         .to_h { |command_class| [command_class.type, command_class] }
         .freeze
-
-      # @return [true, false] true if the class is an abstract class, otherwise
-      #   false.
-      def abstract? = false
 
       # @overload handle_event(command_class)
       #   Registers the command class to handle events of the same type.
