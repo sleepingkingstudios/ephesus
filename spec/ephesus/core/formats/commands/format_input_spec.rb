@@ -45,7 +45,7 @@ RSpec.describe Ephesus::Core::Formats::Commands::FormatInput do
       example_constant 'Spec::CustomCommand', Ephesus::Core::Command
 
       example_class 'Spec::CustomScene', Ephesus::Core::Scene do |klass|
-        klass.handle_event Spec::CustomEvent, Spec::CustomCommand
+        klass.handle_event Spec::CustomCommand, event_type: Spec::CustomEvent
       end
 
       describe 'with an unhandled event' do
