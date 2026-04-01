@@ -1,17 +1,23 @@
 # frozen_string_literal: true
 
+require 'sleeping_king_studios/tools/toolbox/subclass'
+
 require 'ephesus/core/scenes'
 
 module Ephesus::Core::Scenes
   # Utility class that provides scenes of a given type to an Engine.
   class Pool
+    extend SleepingKingStudios::Tools::Toolbox::Subclass
+
     # Exception raised when unable to build a scene with the requested options.
     class BuildError < StandardError; end
 
     # @param builder [Ephesus::Core::Scenes::Builder] the builder used to
     #   initialize new scenes for the pool.
-    def initialize(builder)
+    # @param options [Hash] additional options for the pool.
+    def initialize(builder, **options)
       @builder   = builder
+      @options   = options
       @grouped   = Hash.new { |hsh, key| hsh[key] = [] }
       @semaphore = Thread::Mutex.new
     end
@@ -20,15 +26,22 @@ module Ephesus::Core::Scenes
     #   new scenes for the pool.
     attr_reader :builder
 
+    # @return [Hash] additional options for the pool.
+    attr_reader :options
+
     # Finds or creates a scene matching the given options.
-    def get(**options)
+    #
+    # @param scene_options [Hash] options used to match or create the scene.
+    #
+    # @return [Ephesus::Core::Scene] the matched or created scene.
+    def get(**scene_options)
       semaphore.synchronize do
-        group = grouped[options.hash]
+        group = grouped[scene_options.hash]
         scene = group.first
 
         return scene if scene
 
-        scene = build_scene(**options)
+        scene = build_scene(**scene_options)
 
         group << scene
 

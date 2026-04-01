@@ -5,9 +5,10 @@ require 'ephesus/core/scenes/builder'
 require 'ephesus/core/scenes/pool'
 
 RSpec.describe Ephesus::Core::Scenes::Pool do
-  subject(:pool) { described_class.new(builder) }
+  subject(:pool) { described_class.new(builder, **options) }
 
   let(:builder) { instance_double(Ephesus::Core::Scenes::Builder, call: nil) }
+  let(:options) { {} }
 
   describe '::BuildError' do
     include_examples 'should define constant',
@@ -15,8 +16,23 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
       -> { be_a(Class).and(be < StandardError) }
   end
 
+  describe '.subclass' do
+    it 'should define the class method' do
+      expect(described_class)
+        .to respond_to(:subclass)
+        .with_unlimited_arguments
+        .and_any_keywords
+        .and_a_block
+    end
+  end
+
   describe '#initialize' do
-    it { expect(described_class).to be_constructible.with(1).argument }
+    it 'should define the constructor' do
+      expect(described_class)
+        .to be_constructible
+        .with(1).argument
+        .and_any_keywords
+    end
   end
 
   describe '#builder' do
@@ -206,6 +222,36 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
         expect(values.size).to be 3
         expect(values).to all be scene
+      end
+    end
+  end
+
+  describe '#options' do
+    include_examples 'should define reader', :options, {}
+
+    context 'when initialized with options: value' do
+      let(:options) { { custom_option: 'custom value', password: 'password' } }
+
+      it { expect(pool.options).to be == options }
+    end
+
+    context 'with a subclass with static options' do
+      let(:static_options) do
+        { custom_option: 'static_value', secret: '12345' }
+      end
+      let(:described_class) do
+        super().subclass(**static_options)
+      end
+
+      it { expect(pool.options).to be == static_options }
+
+      context 'when initialized with options: value' do
+        let(:options) do
+          { custom_option: 'custom value', password: 'password' }
+        end
+        let(:expected) { static_options.merge(options) }
+
+        it { expect(pool.options).to be == expected }
       end
     end
   end
