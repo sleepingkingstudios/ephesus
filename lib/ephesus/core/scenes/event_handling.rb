@@ -28,7 +28,7 @@ module Ephesus::Core::Scenes
 
       # @return [true, false] true if the class is an abstract class, otherwise
       #   false.
-      def abstract? = self == Ephesus::Core::Scene
+      def abstract? = false
 
       # @overload handle_event(command_class)
       #   Registers the command class to handle events of the same type.
