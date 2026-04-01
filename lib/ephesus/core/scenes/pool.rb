@@ -2,12 +2,14 @@
 
 require 'sleeping_king_studios/tools/toolbox/subclass'
 
+require 'ephesus/core/messaging/publisher'
 require 'ephesus/core/scenes'
 
 module Ephesus::Core::Scenes
   # Utility class that provides scenes of a given type to an Engine.
   class Pool
-    extend SleepingKingStudios::Tools::Toolbox::Subclass
+    extend  SleepingKingStudios::Tools::Toolbox::Subclass
+    include Ephesus::Core::Messaging::Publisher
 
     # Exception raised when unable to build a scene with the requested options.
     class BuildError < StandardError; end
@@ -43,9 +45,7 @@ module Ephesus::Core::Scenes
 
         scene = build_scene(**scene_options)
 
-        group << scene
-
-        scene
+        add_scene(group:, scene:)
       end
     end
 
@@ -54,6 +54,14 @@ module Ephesus::Core::Scenes
     attr_reader :grouped
 
     attr_reader :semaphore
+
+    def add_scene(group:, scene:)
+      group << scene
+
+      publish(scene, channel: :scene_added)
+
+      scene
+    end
 
     def build_error_message_for(error:, options:)
       message = 'unable to build scene'
