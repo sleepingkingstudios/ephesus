@@ -10,6 +10,7 @@ module Ephesus
     autoload :Command,    'ephesus/core/command'
     autoload :Commands,   'ephesus/core/commands'
     autoload :Connection, 'ephesus/core/connection'
+    autoload :Engines,    'ephesus/core/engines'
     autoload :Formats,    'ephesus/core/formats'
     autoload :Message,    'ephesus/core/message'
     autoload :Messages,   'ephesus/core/messages'
