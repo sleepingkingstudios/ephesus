@@ -14,11 +14,17 @@ module Ephesus::Core::Scenes
     # Exception raised when unable to build a scene with the requested options.
     class BuildError < StandardError; end
 
+    # Message dispatched when a scene is added to the pool.
+    SceneAdded = Ephesus::Core::Message.define(:scene, :type)
+
     # @param builder [Ephesus::Core::Scenes::Builder] the builder used to
     #   initialize new scenes for the pool.
+    # @param type [String] the type identifier for the scene pool. Defaults to
+    #   the type identifier for the builder.
     # @param options [Hash] additional options for the pool.
-    def initialize(builder, **options)
+    def initialize(builder, type: nil, **options)
       @builder   = builder
+      @type      = type || builder.type
       @options   = options
       @grouped   = Hash.new { |hsh, key| hsh[key] = [] }
       @semaphore = Thread::Mutex.new
@@ -30,6 +36,9 @@ module Ephesus::Core::Scenes
 
     # @return [Hash] additional options for the pool.
     attr_reader :options
+
+    # @return [String] the type identifier for the scene pool.
+    attr_reader :type
 
     # Finds or creates a scene matching the given options.
     #
@@ -58,7 +67,7 @@ module Ephesus::Core::Scenes
     def add_scene(group:, scene:)
       group << scene
 
-      publish(scene, channel: :scene_added)
+      publish(SceneAdded.new(scene:, type:), channel: :scene_added)
 
       scene
     end

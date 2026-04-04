@@ -10,11 +10,20 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
   subject(:pool) { described_class.new(builder, **options) }
 
-  let(:builder) { instance_double(Ephesus::Core::Scenes::Builder, call: nil) }
+  let(:builder) do
+    instance_double(
+      Ephesus::Core::Scenes::Builder,
+      call: nil,
+      type: 'spec.custom'
+    )
+  end
   let(:options) { {} }
 
   define_method :build_publisher do
-    described_class.new(instance_double(Ephesus::Core::Scenes::Builder))
+    builder =
+      instance_double(Ephesus::Core::Scenes::Builder, type: 'spec.other')
+
+    described_class.new(builder)
   end
 
   example_class 'Spec::Subscriber' do |klass|
@@ -27,6 +36,16 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
       -> { be_a(Class).and(be < StandardError) }
   end
 
+  describe '::SceneAdded' do
+    let(:expected) { %i[scene type] }
+
+    include_examples 'should define constant',
+      :SceneAdded,
+      -> { be_a(Class).and(be < Ephesus::Core::Message) }
+
+    it { expect(described_class::SceneAdded.members).to be == expected }
+  end
+
   describe '.subclass' do
     it 'should define the class method' do
       expect(described_class)
@@ -37,16 +56,17 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
     end
   end
 
+  include_deferred 'should publish messages'
+
   describe '#initialize' do
     it 'should define the constructor' do
       expect(described_class)
         .to be_constructible
         .with(1).argument
+        .and_keywords(:type)
         .and_any_keywords
     end
   end
-
-  include_deferred 'should publish messages'
 
   describe '#builder' do
     include_examples 'should define reader', :builder, -> { builder }
@@ -57,6 +77,7 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
     let(:result)   { Cuprum::Result.new(value: scene) }
     let(:observer) { Spec::Subscriber.new }
     let(:matching) { nil }
+    let(:message)  { described_class::SceneAdded.new(scene:, type: pool.type) }
 
     before(:example) do
       allow(builder).to receive(:call).and_return(result)
@@ -87,10 +108,10 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
     it { expect(pool.get).to be scene }
 
-    it 'should publish the scene on channel :scene_added' do
+    it 'should publish the message on channel :scene_added' do
       pool.get
 
-      expect(observer).to have_received(:receive_message).with(scene)
+      expect(observer).to have_received(:receive_message).with(be == message)
     end
 
     context 'when the builder returns a failing result' do
@@ -132,10 +153,10 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
       it { expect(pool.get).to be scene }
 
-      it 'should publish the scene on channel :scene_added' do
+      it 'should publish the message on channel :scene_added' do
         pool.get
 
-        expect(observer).to have_received(:receive_message).with(scene)
+        expect(observer).to have_received(:receive_message).with(be == message)
       end
     end
 
@@ -158,7 +179,7 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
       it { expect(pool.get).to be scene }
 
-      it 'should not publish the scene' do
+      it 'should not publish the message' do
         pool.get
 
         expect(observer).not_to have_received(:receive_message)
@@ -176,10 +197,10 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
       it { expect(pool.get(**options)).to be scene }
 
-      it 'should publish the scene on channel :scene_added' do
+      it 'should publish the message on channel :scene_added' do
         pool.get(**options)
 
-        expect(observer).to have_received(:receive_message).with(scene)
+        expect(observer).to have_received(:receive_message).with(be == message)
       end
 
       context 'when the builder returns a failing result' do
@@ -222,10 +243,12 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
         it { expect(pool.get(**options)).to be scene }
 
-        it 'should publish the scene on channel :scene_added' do
+        it 'should publish the message on channel :scene_added' do
           pool.get(**options)
 
-          expect(observer).to have_received(:receive_message).with(scene)
+          expect(observer)
+            .to have_received(:receive_message)
+            .with(be == message)
         end
       end
 
@@ -251,7 +274,7 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
         it { expect(pool.get(**options)).to be scene }
 
-        it 'should not publish the scene' do
+        it 'should not publish the message' do
           pool.get(**options)
 
           expect(observer).not_to have_received(:receive_message)
@@ -295,6 +318,13 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
       it { expect(pool.options).to be == options }
     end
 
+    context 'when initialized with type: value' do
+      let(:type)    { 'spec.example' }
+      let(:options) { super().merge(type:) }
+
+      it { expect(pool.options).to be == options.except(:type) }
+    end
+
     context 'with a subclass with static options' do
       let(:static_options) do
         { custom_option: 'static_value', secret: '12345' }
@@ -313,6 +343,17 @@ RSpec.describe Ephesus::Core::Scenes::Pool do
 
         it { expect(pool.options).to be == expected }
       end
+    end
+  end
+
+  describe '#type' do
+    include_examples 'should define reader', :type, -> { builder.type }
+
+    context 'when initialized with type: value' do
+      let(:type)    { 'spec.example' }
+      let(:options) { super().merge(type:) }
+
+      it { expect(pool.type).to be == type }
     end
   end
 end
