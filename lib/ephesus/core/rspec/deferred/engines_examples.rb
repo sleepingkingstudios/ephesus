@@ -74,6 +74,12 @@ module Ephesus::Core::RSpec::Deferred
         include_examples 'should define class reader', :managed_scenes
       end
 
+      describe '#default_scene' do
+        it 'should define the private method' do
+          expect(subject).to respond_to(:default_scene, true).with(0).arguments
+        end
+      end
+
       describe '#get_scene' do
         it 'should define the method' do
           expect(subject)
@@ -98,7 +104,8 @@ module Ephesus::Core::RSpec::Deferred
       end
     end
 
-    deferred_examples 'should implement the scene management methods' do
+    deferred_examples 'should implement the scene management methods' \
+    do |**example_options|
       describe '.manage_scene' do
         deferred_examples 'should register the scene pool' do
           it { expect(manage_scene).to be == expected_type }
@@ -589,6 +596,12 @@ module Ephesus::Core::RSpec::Deferred
             include_deferred 'should manage scene', 'Spec::Fantasy::Inventory'
           end
         end
+      end
+
+      describe '#default_scene' do
+        next if example_options.fetch(:default_scene, false)
+
+        it { expect(subject.send(:default_scene)).to be nil }
       end
 
       describe '#get_scene' do
