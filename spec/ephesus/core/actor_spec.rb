@@ -28,6 +28,30 @@ RSpec.describe Ephesus::Core::Actor do
     include_examples 'should define reader', :as_json, -> { expected }
   end
 
+  describe '#current_scene' do
+    include_examples 'should define reader', :current_scene, nil
+
+    context 'when the actor has a current scene' do
+      let(:scene) { Ephesus::Core::Scene.new }
+
+      before(:example) { actor.current_scene = scene }
+
+      it { expect(actor.current_scene).to be scene }
+    end
+  end
+
+  describe '#current_scene=' do
+    let(:scene) { Ephesus::Core::Scene.new }
+
+    include_examples 'should define writer', :current_scene=
+
+    it 'should set the current scene' do
+      expect { actor.current_scene = scene }
+        .to change(actor, :current_scene)
+        .to be scene
+    end
+  end
+
   describe '#handle_notification' do
     let(:message)    { Ephesus::Core::Message.new }
     let(:subscriber) { Spec::Subscriber.new }
@@ -55,9 +79,18 @@ RSpec.describe Ephesus::Core::Actor do
 
   describe '#inspect' do
     let(:expected) do
-      "#<#{described_class.name} id=#{actor.id.inspect}>"
+      "#<#{described_class.name} id=#{actor.id.inspect} current_scene=" \
+        "#{actor.current_scene.inspect}>"
     end
 
     it { expect(actor.inspect).to be == expected }
+
+    context 'when the actor has a current scene' do
+      let(:scene) { Ephesus::Core::Scene.new }
+
+      before(:example) { actor.current_scene = scene }
+
+      it { expect(actor.inspect).to be == expected }
+    end
   end
 end

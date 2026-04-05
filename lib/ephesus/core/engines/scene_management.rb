@@ -222,6 +222,8 @@ module Ephesus::Core::Engines
 
     attr_reader :scene_pools
 
+    def default_scene = nil
+
     def initialize_scene_pools # rubocop:disable Metrics/MethodLength
       self
         .class

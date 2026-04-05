@@ -17,6 +17,9 @@ module Ephesus::Core
       @id = SecureRandom.uuid_v7
     end
 
+    # @return [Ephesus::Core::Scene] the current scene for the actor.
+    attr_accessor :current_scene
+
     # @return [String] a unique identifier for the actor.
     attr_reader :id
 
@@ -45,7 +48,7 @@ module Ephesus::Core
 
     private
 
-    def properties_to_inspect = %i[id]
+    def properties_to_inspect = %i[id current_scene]
 
     def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
   end

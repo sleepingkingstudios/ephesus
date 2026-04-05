@@ -26,6 +26,10 @@ RSpec.describe Ephesus::Core::Engine do
 
   include_deferred 'should subscribe to messages'
 
+  include_deferred 'should implement the connection management interface'
+
+  include_deferred 'should implement the connection management methods'
+
   include_deferred 'should implement the scene management interface'
 
   wrap_deferred 'with an engine subclass' do
@@ -57,5 +61,14 @@ RSpec.describe Ephesus::Core::Engine do
       expect { described_class.manage_scene(builder) }
         .to raise_error described_class::AbstractClassError, error_message
     end
+  end
+
+  describe '#build_actor' do
+    let(:connection) { Ephesus::Core::Connection.new(format: 'spec.format') }
+    let(:actor)      { subject.send(:build_actor, connection) }
+
+    it { expect(actor).to be_a Ephesus::Core::Actors::ExternalActor }
+
+    it { expect(actor.connection).to be connection }
   end
 end
