@@ -594,6 +594,23 @@ module Ephesus::Core::RSpec::Deferred
       describe '#get_scene' do
         let(:options) { {} }
 
+        describe 'with a non-matching scene class' do
+          let(:scene_class) { Spec::InvalidScene }
+          let(:error_message) do
+            "unable to get scene #{scene_class.type.inspect} - no scene pool " \
+              'matching the requested scene type'
+          end
+
+          example_class 'Spec::InvalidScene', Ephesus::Core::Scene
+
+          it 'should raise an exception' do
+            expect { subject.get_scene(scene_class) }.to raise_error(
+              described_class::SceneNotFoundError,
+              error_message
+            )
+          end
+        end
+
         describe 'with a non-matching scene type' do
           let(:scene_type) { 'spec.invalid_type' }
           let(:error_message) do
@@ -640,6 +657,74 @@ module Ephesus::Core::RSpec::Deferred
                 nil
               end
                 .not_to(change { engine.send(:scenes) })
+            end
+          end
+
+          describe 'with a matching scene class' do
+            let(:scene_class) { Spec::Fantasy::Conversation }
+
+            it 'should return the matching scene' do
+              expect(subject.get_scene(scene_class, **options))
+                .to be_a Spec::Fantasy::Conversation
+            end
+
+            it 'should delegate to the scene pool' do
+              scene_pool = subject.send(:scene_pools)[scene_class.type]
+
+              allow(scene_pool).to receive(:get)
+
+              subject.get_scene(scene_class, **options)
+
+              expect(scene_pool).to have_received(:get).with(no_args)
+            end
+
+            it 'should add the scene to #scenes' do
+              scene = subject.get_scene(scene_class, **options)
+
+              expect(subject.send(:scenes)[scene.id]).to be scene
+            end
+
+            context 'when the scene is already added' do
+              before(:example) { subject.get_scene(scene_class, **options) }
+
+              it 'should not add a scene to #scenes' do
+                expect { described_class::SceneNotFoundError }
+                  .not_to(change { engine.send(:scenes) })
+              end
+            end
+
+            describe 'with options: value' do
+              let(:options) { super().merge(custom_property: 'custom value') }
+
+              it 'should return the matching scene' do
+                expect(subject.get_scene(scene_class, **options))
+                  .to be_a Spec::Fantasy::Conversation
+              end
+
+              it 'should delegate to the scene pool' do
+                scene_pool = subject.send(:scene_pools)[scene_class.type]
+
+                allow(scene_pool).to receive(:get)
+
+                subject.get_scene(scene_class, **options)
+
+                expect(scene_pool).to have_received(:get).with(**options)
+              end
+
+              it 'should add the scene to #scenes' do
+                scene = subject.get_scene(scene_class, **options)
+
+                expect(subject.send(:scenes)[scene.id]).to be scene
+              end
+
+              context 'when the scene is already added' do
+                before(:example) { subject.get_scene(scene_class, **options) }
+
+                it 'should not add a scene to #scenes' do
+                  expect { described_class::SceneNotFoundError }
+                    .not_to(change { engine.send(:scenes) })
+                end
+              end
             end
           end
 

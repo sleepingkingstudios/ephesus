@@ -193,6 +193,8 @@ module Ephesus::Core::Engines
     # @raise [Ephesus::Core::Engines::SceneManagement::SceneNotFoundError] if
     #   there is no scene pool matching the requested type.
     def get_scene(scene_type, **scene_options)
+      scene_type = scene_type.type if scene_type.respond_to?(:type)
+
       scene_pool = scene_pools.fetch(scene_type) do
         message =
           "unable to get scene #{scene_type.inspect} - no scene pool " \
