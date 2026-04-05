@@ -59,6 +59,300 @@ module Ephesus::Core::RSpec::Deferred
       end
     end
 
+    deferred_examples 'should implement the connection management interface' \
+    do
+      describe '#actors' do
+        include_examples 'should define private reader', :actors
+      end
+
+      describe '#add_actor_to_scene' do
+        it 'should define the method' do
+          expect(subject)
+            .to respond_to(:add_actor_to_scene)
+            .with(0).arguments
+            .and_keywords(:actor, :scene)
+        end
+      end
+
+      describe '#add_connection' do
+        it { expect(subject).to respond_to(:add_connection).with(1).argument }
+      end
+
+      describe '#build_actor' do
+        it 'should define the private method' do
+          expect(subject).to respond_to(:build_actor, true).with(1).argument
+        end
+      end
+
+      describe '#connections' do
+        include_examples 'should define private reader', :connections
+      end
+
+      describe '#default_scene' do
+        it 'should define the private method' do
+          expect(subject).to respond_to(:default_scene, true).with(0).arguments
+        end
+      end
+
+      describe '#enqueue_event' do
+        it 'should define the private method' do
+          expect(subject)
+            .to respond_to(:enqueue_event, true)
+            .with(0).arguments
+            .and_keywords(:event, :scene)
+        end
+      end
+
+      describe '#handle_event' do
+        it { expect(subject).to respond_to(:handle_event).with(1).argument }
+      end
+
+      describe '#remove_actor_from_scene' do
+        it 'should define the method' do
+          expect(subject)
+            .to respond_to(:remove_actor_from_scene)
+            .with(0).arguments
+            .and_keywords(:actor)
+        end
+      end
+
+      describe '#remove_connection' do
+        it 'should define the method' do
+          expect(subject).to respond_to(:remove_connection).with(1).argument
+        end
+      end
+    end
+
+    deferred_examples 'should implement the connection management methods' \
+    do |**example_options|
+      describe '#actors' do
+        it { expect(subject.send(:actors)).to be == {} }
+      end
+
+      describe '#add_actor_to_scene' do
+        let(:actor) { Ephesus::Core::Actor.new }
+        let(:scene) { Ephesus::Core::Scene.new }
+        let(:connect_event) do
+          Ephesus::Core::Commands::ConnectActor::Event.new(actor)
+        end
+
+        before(:example) do
+          allow(subject).to receive(:enqueue_event)
+        end
+
+        it { expect(subject.add_actor_to_scene(actor:, scene:)).to be nil }
+
+        it 'should set the current scene for the actor' do
+          expect { subject.add_actor_to_scene(actor:, scene:) }
+            .to change(actor, :current_scene)
+            .to be scene
+        end
+
+        it 'should enqueue a ConnectActor event' do
+          subject.add_actor_to_scene(actor:, scene:)
+
+          expect(subject)
+            .to have_received(:enqueue_event)
+            .with(event: connect_event, scene:)
+        end
+
+        context 'when the actor has a current scene' do
+          let(:previous_scene) { Ephesus::Core::Scene.new }
+          let(:disconnect_event) do
+            Ephesus::Core::Commands::DisconnectActor::Event.new(actor)
+          end
+
+          before(:example) { actor.current_scene = previous_scene }
+
+          it { expect(subject.add_actor_to_scene(actor:, scene:)).to be nil }
+
+          it 'should set the current scene for the actor' do
+            expect { subject.add_actor_to_scene(actor:, scene:) }
+              .to change(actor, :current_scene)
+              .to be scene
+          end
+
+          it 'should enqueue a ConnectActor event' do
+            subject.add_actor_to_scene(actor:, scene:)
+
+            expect(subject)
+              .to have_received(:enqueue_event)
+              .with(event: connect_event, scene:)
+          end
+
+          it 'should enqueue a DisconnectActor event for the previous scene' do
+            subject.add_actor_to_scene(actor:, scene:)
+
+            expect(subject)
+              .to have_received(:enqueue_event)
+              .with(event: disconnect_event, scene: previous_scene)
+          end
+        end
+      end
+
+      describe '#add_connection' do
+        next if example_options.fetch(:except, []).include?(:add_connection)
+
+        let(:connection) do
+          Ephesus::Core::Connection.new(format: 'spec.format')
+        end
+        let(:expected_actor) do
+          subject.send(:build_actor, connection)
+        end
+        let(:message) { Ephesus::Core::Message.new }
+
+        before(:example) do
+          allow(subject).to receive(:build_actor).and_return(expected_actor)
+        end
+
+        it 'should add the connection to #connections', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
+          expect { subject.send(:add_connection, connection) }.to(
+            change { subject.send(:connections).keys }.to(
+              include(connection.id)
+            )
+          )
+
+          expect(subject.send(:connections)[connection.id]).to be connection
+        end
+
+        it 'should build the actor' do
+          subject.send(:add_connection, connection)
+
+          expect(subject).to have_received(:build_actor).with(connection)
+        end
+
+        it 'should set the connection actor' do
+          expect { subject.send(:add_connection, connection) }
+            .to change(connection, :actor)
+            .to be expected_actor
+        end
+
+        it 'should subscribe to events from the connection' do
+          allow(subject).to receive(:handle_event)
+
+          subject.send(:add_connection, connection)
+
+          connection.publish(message, channel: :events)
+
+          expect(subject).to have_received(:handle_event).with(message)
+        end
+
+        context 'when the connection already has an actor' do
+          let(:actor) { Ephesus::Core::Actor.new }
+          let(:error_message) do
+            "unable to add connection #{connection.inspect} - connection " \
+              'already has an actor'
+          end
+
+          before(:example) { connection.actor = actor }
+
+          it 'should raise an exception' do
+            expect { subject.send(:add_connection, connection) }
+              .to raise_error described_class::ConnectionError, error_message
+          end
+        end
+      end
+
+      describe '#connections' do
+        it { expect(subject.send(:connections)).to be == {} }
+      end
+
+      describe '#remove_actor_from_scene' do
+        let(:actor) { Ephesus::Core::Actor.new }
+
+        before(:example) do
+          allow(subject).to receive(:enqueue_event)
+        end
+
+        it { expect(subject.remove_actor_from_scene(actor:)).to be nil }
+
+        it 'should not change the current scene for the actor' do
+          expect { subject.remove_actor_from_scene(actor:) }
+            .not_to change(actor, :current_scene)
+        end
+
+        context 'when the actor has a current scene' do
+          let(:previous_scene) { Ephesus::Core::Scene.new }
+          let(:disconnect_event) do
+            Ephesus::Core::Commands::DisconnectActor::Event.new(actor)
+          end
+
+          before(:example) { actor.current_scene = previous_scene }
+
+          it { expect(subject.remove_actor_from_scene(actor:)).to be nil }
+
+          it 'should clear the current scene for the actor' do
+            expect { subject.remove_actor_from_scene(actor:) }
+              .to change(actor, :current_scene)
+              .to be nil
+          end
+
+          it 'should enqueue a DisconnectActor event' do
+            subject.remove_actor_from_scene(actor:)
+
+            expect(subject)
+              .to have_received(:enqueue_event)
+              .with(event: disconnect_event, scene: previous_scene)
+          end
+        end
+      end
+
+      describe '#remove_connection' do
+        let(:connection) do
+          Ephesus::Core::Connection.new(format: 'spec.format')
+        end
+        let(:message) { Ephesus::Core::Message.new }
+
+        before(:example) { subject.add_connection(connection) }
+
+        it 'should remove the connection from #connections' do
+          expect { subject.remove_connection(connection) }.to(
+            change { subject.send(:connections) }.to(
+              satisfy { |hsh| !hsh.key?(connection.id) }
+            )
+          )
+        end
+
+        it 'should unsubscribe from events from the connection' do
+          allow(subject).to receive(:handle_event)
+
+          subject.remove_connection(connection)
+
+          connection.publish(message, channel: :events)
+
+          expect(subject).not_to have_received(:handle_event)
+        end
+
+        context 'when the actor has a current scene' do
+          let(:previous_scene) { Ephesus::Core::Scene.new }
+          let(:disconnect_event) do
+            Ephesus::Core::Commands::DisconnectActor::Event
+              .new(connection.actor)
+          end
+
+          before(:example) do
+            connection.actor.current_scene = previous_scene
+
+            allow(subject).to receive(:enqueue_event)
+          end
+
+          it 'should clear the current scene for the actor' do
+            expect { subject.remove_connection(connection) }
+              .to change(connection.actor, :current_scene)
+              .to be nil
+          end
+
+          it 'should enqueue a DisconnectActor event' do
+            subject.remove_connection(connection)
+
+            expect(subject)
+              .to have_received(:enqueue_event)
+              .with(event: disconnect_event, scene: previous_scene)
+          end
+        end
+      end
+    end
+
     deferred_examples 'should implement the scene management interface' do
       describe '.manage_scene' do
         it 'should define the class method' do

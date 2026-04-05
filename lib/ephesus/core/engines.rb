@@ -5,6 +5,7 @@ require 'ephesus/core'
 module Ephesus::Core
   # Namespace for functionality implementing engines.
   module Engines
-    autoload :SceneManagement, 'ephesus/core/engines/scene_management'
+    autoload :ConnectionManagement, 'ephesus/core/engines/connection_management'
+    autoload :SceneManagement,      'ephesus/core/engines/scene_management'
   end
 end
