@@ -45,17 +45,6 @@ module Ephesus::Core::Scenes
       end
     end
 
-    def handle_side_effects(side_effects)
-      side_effects&.each do |maybe_side_effect|
-        next unless maybe_side_effect.is_a?(Array)
-        next unless maybe_side_effect.first.is_a?(Symbol)
-
-        side_effect, *details = maybe_side_effect
-
-        handle_side_effect(side_effect, *details)
-      end
-    end
-
     def handle_subscribe(subscriber:, **)
       subscriber.subscribe(self, **)
     end

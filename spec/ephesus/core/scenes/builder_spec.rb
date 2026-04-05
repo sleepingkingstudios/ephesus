@@ -153,4 +153,8 @@ RSpec.describe Ephesus::Core::Scenes::Builder do
       it { expect(builder.static_options).to be == static_options }
     end
   end
+
+  describe '#type' do
+    include_examples 'should define reader', :type, -> { scene_class.type }
+  end
 end

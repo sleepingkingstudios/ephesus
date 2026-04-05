@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'ephesus/core/abstract'
 require 'ephesus/core/command'
 require 'ephesus/core/commands/connect_actor'
 require 'ephesus/core/commands/disconnect_actor'
@@ -8,53 +9,54 @@ require 'ephesus/core/scenes'
 module Ephesus::Core::Scenes
   # Functionality for registering and calling event handlers for a scene.
   module EventHandling
-    extend SleepingKingStudios::Tools::Toolbox::Mixin
-
-    # Exception raised when setting a static option on an abstract class.
-    class AbstractClassError < StandardError; end
+    extend  SleepingKingStudios::Tools::Toolbox::Mixin
+    include Ephesus::Core::Abstract
 
     # Exception raised when a handler is not found for an event.
     class UnhandledEventError < StandardError; end
 
+    UNDEFINED = SleepingKingStudios::Tools::UNDEFINED
+    private_constant :UNDEFINED
+
     # Class methods extended onto Scene when including EventHandling.
     module ClassMethods
-      DEFAULT_EVENT_HANDLERS =
-        [
-          Ephesus::Core::Commands::ConnectActor,
-          Ephesus::Core::Commands::DisconnectActor
-        ]
-        .to_h { |command_class| [command_class.type, command_class] }
-        .freeze
-
-      # @return [true, false] true if the class is an abstract class, otherwise
-      #   false.
-      def abstract? = self == Ephesus::Core::Scene
-
-      # @overload handle_event(command_class)
+      # @overload handle_event(command_class, force: false)
       #   Registers the command class to handle events of the same type.
       #
       #   @param command_class [Class] the command class used to handle matching
       #     events.
+      #   @param force [true, false] if true, defines the event handler even for
+      #     an abstract Scene class.
       #
-      # @overload handle_event(event_type, command_class)
+      #   @return [String] the handled event type.
+      #
+      # @overload handle_event(command_class, type:, force: false)
       #   Registers the command class to handle events of the specified type.
       #
-      #   @param event_type [Event, String] the event or event type to match.
       #   @param command_class [Class] the command class used to handle matching
       #     events.
-      def handle_event(event_or_command, maybe_command = nil)
-        if abstract?
+      #   @param event_type [String, #type] the event or event type to handle.
+      #   @param force [true, false] if true, defines the event handler even for
+      #     an abstract Scene class.
+      #
+      #   @return [String] the handled event type.
+      def handle_event(command_class, event_type: UNDEFINED, force: false) # rubocop:disable Metrics/MethodLength
+        if abstract? && !force
           raise self::AbstractClassError,
             "unable to add event handler for abstract class #{name}"
         end
 
-        event_type, command_class =
-          resolve_event_and_command(event_or_command, maybe_command)
+        event_type = command_class if event_type == UNDEFINED
+        event_type = event_type.type if event_type.respond_to?(:type)
 
         validate_command_class(command_class)
         validate_event_type(event_type)
 
-        own_handled_events[event_type.to_s] = command_class
+        event_type = event_type.to_s
+
+        own_handled_events[event_type] = command_class
+
+        event_type
       end
 
       # @overload handle_event(command_class)
@@ -82,27 +84,16 @@ module Ephesus::Core::Scenes
       # @return [Hash{String => Class}] the event types handled by the scene and
       #   the corresponding Command classes.
       def handled_events
-        return DEFAULT_EVENT_HANDLERS if self == Ephesus::Core::Scene
+        if superclass.respond_to?(:handled_events)
+          return superclass.handled_events.merge(own_handled_events)
+        end
 
-        superclass.handled_events.merge(own_handled_events)
+        own_handled_events
       end
 
       private
 
       def own_handled_events = @own_handled_events ||= {}
-
-      def resolve_event_and_command(event_or_command, maybe_command)
-        if maybe_command.nil? && event_or_command.respond_to?(:type)
-          return [event_or_command.type, event_or_command]
-        elsif maybe_command.nil?
-          return [nil, event_or_command]
-        end
-
-        event_type = event_or_command
-        event_type = event_type.type if event_type.respond_to?(:type)
-
-        [event_type, maybe_command]
-      end
 
       def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
 
@@ -144,6 +135,19 @@ module Ephesus::Core::Scenes
       handle_side_effects(side_effects)
 
       result
+    end
+
+    def handle_side_effect(*) = nil
+
+    def handle_side_effects(side_effects)
+      side_effects&.each do |maybe_side_effect|
+        next unless maybe_side_effect.is_a?(Array)
+        next unless maybe_side_effect.first.is_a?(Symbol)
+
+        side_effect, *details = maybe_side_effect
+
+        handle_side_effect(side_effect, *details)
+      end
     end
 
     def resolve_failure(value)

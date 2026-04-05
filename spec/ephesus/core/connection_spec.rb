@@ -22,8 +22,6 @@ RSpec.describe Ephesus::Core::Connection do
   end
 
   define_method :build_publisher do
-    return super() if defined?(super())
-
     described_class.new(format:)
   end
 

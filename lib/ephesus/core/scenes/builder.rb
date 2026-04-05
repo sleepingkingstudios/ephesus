@@ -31,6 +31,9 @@ module Ephesus::Core::Scenes
     #   @return [Cuprum::Result<Ephesus::Core::Scene>] the generated scene.
     alias build call
 
+    # @return [String] the type identifier for the scene.
+    def type = scene_class.type
+
     private
 
     def build_scene(state, **) = scene_class.new(state:)

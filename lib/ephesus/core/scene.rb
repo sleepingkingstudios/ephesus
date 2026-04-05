@@ -28,6 +28,13 @@ module Ephesus::Core
     include Ephesus::Core::Scenes::EventHandling
     include Ephesus::Core::Scenes::SideEffects
 
+    handle_event Ephesus::Core::Commands::ConnectActor,    force: true
+    handle_event Ephesus::Core::Commands::DisconnectActor, force: true
+
+    # @return [true, false] true if the class is an abstract class, otherwise
+    #   false.
+    def self.abstract? = self == Ephesus::Core::Scene
+
     # @param [Hash] the initial state for the scene. Will be merged onto the
     #   defined default state, if any.
     def initialize(state: {})

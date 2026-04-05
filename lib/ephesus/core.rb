@@ -4,11 +4,14 @@
 module Ephesus
   # Implements functionality for Ephesus.
   module Core
+    autoload :Abstract,   'ephesus/core/abstract'
     autoload :Actor,      'ephesus/core/actor'
     autoload :Actors,     'ephesus/core/actors'
     autoload :Command,    'ephesus/core/command'
     autoload :Commands,   'ephesus/core/commands'
     autoload :Connection, 'ephesus/core/connection'
+    autoload :Engine,     'ephesus/core/engine'
+    autoload :Engines,    'ephesus/core/engines'
     autoload :Formats,    'ephesus/core/formats'
     autoload :Message,    'ephesus/core/message'
     autoload :Messages,   'ephesus/core/messages'
