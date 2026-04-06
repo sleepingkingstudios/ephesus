@@ -39,13 +39,15 @@ RSpec.describe Ephesus::Core::Formats::Commands::FormatOutput do
 
     describe 'with an error notification' do
       let(:message) { 'Something went wrong.' }
+      let(:error)   { Cuprum::Error.new(message:) }
       let(:notification) do
         Ephesus::Core::Messages::ErrorNotification
-          .new(original_actor: actor, message:)
+          .new(original_actor: actor, error:)
       end
       let(:expected_value) do
         Ephesus::Core::Formats::ErrorMessage.new(
           details:  notification.details,
+          error:    notification.error,
           error_id: notification.error_id,
           format:   command.format,
           message:  notification.message
@@ -63,7 +65,7 @@ RSpec.describe Ephesus::Core::Formats::Commands::FormatOutput do
         let(:error_id) { SecureRandom.uuid }
         let(:notification) do
           Ephesus::Core::Messages::ErrorNotification
-            .new(original_actor: actor, message:, details:, error_id:)
+            .new(original_actor: actor, details:, error:, error_id:)
         end
 
         it 'should return a passing result' do

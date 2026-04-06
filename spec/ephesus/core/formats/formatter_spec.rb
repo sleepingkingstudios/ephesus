@@ -136,16 +136,17 @@ RSpec.describe Ephesus::Core::Formats::Formatter do
 
     describe 'with an error notification' do
       let(:message) { 'Something went wrong.' }
+      let(:error)   { Cuprum::Error.new(message:) }
       let(:notification) do
         Ephesus::Core::Messages::ErrorNotification
-          .new(original_actor: actor, message:)
+          .new(original_actor: actor, error:)
       end
       let(:expected_value) do
         Ephesus::Core::Formats::ErrorMessage.new(
           details:  notification.details,
+          error:,
           error_id: notification.error_id,
-          format:   formatter.format,
-          message:  notification.message
+          format:   formatter.format
         )
       end
 

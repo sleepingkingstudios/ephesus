@@ -120,6 +120,7 @@ module Ephesus::Core
         current_actor:  notification.current_actor,
         original_actor: notification.original_actor,
         context:        notification.context,
+        error:          error,
         error_id:       SecureRandom.uuid_v7,
         message:        error&.message || 'An unknown error occurred',
         details:        details || {}
