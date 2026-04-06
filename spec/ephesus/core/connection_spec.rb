@@ -35,12 +35,6 @@ RSpec.describe Ephesus::Core::Connection do
       -> { be_a(Class).and(be < StandardError) }
   end
 
-  describe '::FormatNotFoundError' do
-    include_examples 'should define constant',
-      :FormatNotFoundError,
-      -> { be_a(Class).and(be < StandardError) }
-  end
-
   describe '.new' do
     it 'should define the constructor' do
       expect(described_class)
@@ -154,8 +148,129 @@ RSpec.describe Ephesus::Core::Connection do
     include_examples 'should define reader', :format
   end
 
+  describe '#format_input' do
+    let(:event) { Ephesus::Core::Message.new }
+    let(:scene) { Ephesus::Core::Scene.new }
+
+    it 'should define the method' do
+      expect(connection)
+        .to respond_to(:format_input)
+        .with(0).arguments
+        .and_keywords(:event, :scene)
+        .and_any_keywords
+    end
+
+    context 'when there is not a matching formatter' do
+      let(:expected_error) do
+        Ephesus::Core::Formats::Errors::FormatNotFound.new(
+          format:,
+          message: 'unable to format input'
+        )
+      end
+
+      it 'should return a failing result' do
+        expect(connection.format_input(event:, scene:))
+          .to be_a_failing_result
+          .with_error(expected_error)
+      end
+    end
+
+    context 'when there is a matching formatter' do
+      let(:format)    { 'spec.custom' }
+      let(:formats)   { { 'spec.custom' => Spec::CustomFormatter } }
+      let(:formatter) { subject.send(:formatter) }
+      let(:result)    { Cuprum::Result.new(value: expected_value) }
+      let(:expected_value) do
+        { 'ok' => true, value: 'formatted input' }
+      end
+      let(:constructor_options) do
+        super().merge(formats:)
+      end
+
+      example_class 'Spec::CustomFormatter' do |klass|
+        format_result = result
+
+        klass.define_method :initialize do |**options|
+          @options = options
+        end
+
+        klass.attr_reader :options
+
+        klass.define_method :format_input do |**|
+          format_result
+        end
+      end
+
+      it 'should return a passing result' do
+        expect(connection.format_input(event:, scene:))
+          .to be_a_passing_result
+          .with_value(expected_value)
+      end
+    end
+  end
+
   describe '#format_options' do
     include_examples 'should define private reader', :format_options, {}
+  end
+
+  describe '#format_output' do
+    let(:notification) { Ephesus::Core::Message.new }
+
+    it 'should define the method' do
+      expect(connection)
+        .to respond_to(:format_output)
+        .with(0).arguments
+        .and_keywords(:notification)
+        .and_any_keywords
+    end
+
+    context 'when there is not a matching formatter' do
+      let(:expected_error) do
+        Ephesus::Core::Formats::Errors::FormatNotFound.new(
+          format:,
+          message: 'unable to format output'
+        )
+      end
+
+      it 'should return a failing result' do
+        expect(connection.format_output(notification:))
+          .to be_a_failing_result
+          .with_error(expected_error)
+      end
+    end
+
+    context 'when there is a matching formatter' do
+      let(:format)    { 'spec.custom' }
+      let(:formats)   { { 'spec.custom' => Spec::CustomFormatter } }
+      let(:formatter) { subject.send(:formatter) }
+      let(:result)    { Cuprum::Result.new(value: expected_value) }
+      let(:expected_value) do
+        { 'ok' => true, value: 'formatted output' }
+      end
+      let(:constructor_options) do
+        super().merge(formats:)
+      end
+
+      example_class 'Spec::CustomFormatter' do |klass|
+        format_result = result
+
+        klass.define_method :initialize do |**options|
+          @options = options
+        end
+
+        klass.attr_reader :options
+
+        klass.define_method :format_output do |**|
+          format_result
+        end
+      end
+
+      it 'should return a passing result' do
+        expect(connection.format_output(notification:))
+          .to be_a_passing_result
+          .with_value(expected_value)
+      end
+    end
   end
 
   describe '#formats' do
@@ -170,63 +285,6 @@ RSpec.describe Ephesus::Core::Connection do
       example_class 'Spec::CustomFormatter'
 
       it { expect(connection.send(:formats)).to be == formats }
-    end
-  end
-
-  describe '#formatter' do
-    let(:error_message) do
-      "Formatter not found with format #{connection.format.inspect}"
-    end
-
-    it { expect(connection).to respond_to(:formatter).with(0).arguments }
-
-    context 'when there is not a matching formatter' do
-      it 'should raise an exception' do
-        expect { connection.formatter }
-          .to raise_error described_class::FormatNotFoundError, error_message
-      end
-    end
-
-    context 'when initialized with formats: value' do
-      let(:formats) do
-        { 'spec.custom' => Spec::CustomFormatter }
-      end
-      let(:constructor_options) { super().merge(formats:) }
-
-      example_class 'Spec::CustomFormatter' do |klass|
-        klass.define_method :initialize do |**options|
-          @options = options
-        end
-
-        klass.attr_reader :options
-      end
-
-      context 'when there is not a matching formatter' do
-        it 'should raise an exception' do
-          expect { connection.formatter }
-            .to raise_error described_class::FormatNotFoundError, error_message
-        end
-      end
-
-      context 'when there is a matching formatter' do
-        let(:format) { 'spec.custom' }
-
-        it { expect(connection.formatter).to be_a Spec::CustomFormatter }
-
-        it { expect(connection.formatter.options).to be == {} }
-
-        context 'when the connection defines format options' do
-          let(:format_options) { { locale: 'swedish-chef' } }
-
-          before(:example) do
-            allow(connection) # rubocop:disable RSpec/SubjectStub
-              .to receive(:format_options)
-              .and_return(format_options)
-          end
-
-          it { expect(connection.formatter.options).to be == format_options }
-        end
-      end
     end
   end
 
@@ -265,13 +323,28 @@ RSpec.describe Ephesus::Core::Connection do
     end
 
     context 'when there is not a matching formatter' do
+      let(:subscriber) { Spec::Subscriber.new }
       let(:error_message) do
-        "Formatter not found with format #{connection.format.inspect}"
+        'unable to format output - format not found with type ' \
+          '"spec.example_format"'
+      end
+
+      before(:example) do
+        connection.add_subscription(subscriber, channel: :output)
       end
 
       it 'should raise an exception' do
         expect { connection.handle_notification(notification) }
-          .to raise_error described_class::FormatNotFoundError, error_message
+          .to raise_error(
+            described_class::FormatErrorNotificationError,
+            error_message
+          )
+      end
+
+      it 'should not publish a message' do
+        connection.handle_notification(notification)
+      rescue described_class::FormatErrorNotificationError
+        expect(subscriber.messages).to be == []
       end
     end
 

@@ -6,12 +6,12 @@ RSpec.describe Ephesus::Core::Formats::ErrorMessage do
   subject(:error_message) { described_class.new(**options) }
 
   let(:format)  { 'spec.custom_format' }
-  let(:message) { 'Something went wrong.' }
-  let(:options) { { format:, message: } }
+  let(:error)   { Cuprum::Error.new(message: 'Something went wrong.') }
+  let(:options) { { error:, format: } }
 
   describe '.new' do
     let(:expected_keywords) do
-      %i[details error_id format message]
+      %i[details error error_id format message]
     end
 
     it 'should define the constructor' do
@@ -23,7 +23,7 @@ RSpec.describe Ephesus::Core::Formats::ErrorMessage do
   end
 
   describe '.members' do
-    let(:expected) { %i[format error_id message details] }
+    let(:expected) { %i[format error error_id message details] }
 
     it { expect(described_class.members).to be == expected }
   end
@@ -37,6 +37,10 @@ RSpec.describe Ephesus::Core::Formats::ErrorMessage do
 
       it { expect(error_message.details).to be == details }
     end
+  end
+
+  describe '#error' do
+    include_examples 'should define reader', :error, -> { error }
   end
 
   describe '#error_id' do
@@ -59,6 +63,13 @@ RSpec.describe Ephesus::Core::Formats::ErrorMessage do
   end
 
   describe '#message' do
-    include_examples 'should define reader', :message, -> { message }
+    include_examples 'should define reader', :message, -> { error.message }
+
+    context 'when initialized with message: value' do
+      let(:message) { 'Reactor temperature critical.' }
+      let(:options) { super().merge(message:) }
+
+      it { expect(error_message.message).to be == message }
+    end
   end
 end

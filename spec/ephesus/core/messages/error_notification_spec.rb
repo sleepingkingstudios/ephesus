@@ -6,8 +6,8 @@ RSpec.describe Ephesus::Core::Messages::ErrorNotification do
   subject(:notification) { described_class.new(**options) }
 
   let(:original_actor) { Ephesus::Core::Actor.new }
-  let(:message)        { 'Something went wrong.' }
-  let(:options)        { { message:, original_actor: } }
+  let(:error)          { Cuprum::Error.new(message: 'Something went wrong.') }
+  let(:options)        { { error:, original_actor: } }
 
   describe '.new' do
     let(:expected_keywords) do
@@ -15,6 +15,7 @@ RSpec.describe Ephesus::Core::Messages::ErrorNotification do
         current_actor
         context
         details
+        error
         error_id
         message
         original_actor
@@ -35,6 +36,7 @@ RSpec.describe Ephesus::Core::Messages::ErrorNotification do
         current_actor
         original_actor
         context
+        error
         error_id
         message
         details
@@ -47,8 +49,10 @@ RSpec.describe Ephesus::Core::Messages::ErrorNotification do
   describe '#as_json' do
     let(:expected) do
       {
-        'message' => message,
-        'type'    => notification.type
+        'error'    => notification.error.as_json,
+        'error_id' => notification.error_id,
+        'message'  => notification.message,
+        'type'     => notification.type
       }
     end
 
@@ -115,6 +119,10 @@ RSpec.describe Ephesus::Core::Messages::ErrorNotification do
     end
   end
 
+  describe '#error' do
+    include_examples 'should define reader', :error, -> { error }
+  end
+
   describe '#error_id' do
     let(:expected_format) { /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/ }
 
@@ -131,7 +139,14 @@ RSpec.describe Ephesus::Core::Messages::ErrorNotification do
   end
 
   describe '#message' do
-    include_examples 'should define reader', :message, -> { message }
+    include_examples 'should define reader', :message, -> { error.message }
+
+    context 'when initialized with message: value' do
+      let(:message) { 'Reactor temperature critical.' }
+      let(:options) { super().merge(message:) }
+
+      it { expect(notification.message).to be == message }
+    end
   end
 
   describe '#original_actor' do

@@ -37,6 +37,7 @@ module Ephesus::Core::Formats::Commands
 
     def format_error_notification(notification)
       Ephesus::Core::Formats::ErrorMessage.new(
+        error:    notification.error,
         error_id: notification.error_id,
         details:  notification.details,
         format:,

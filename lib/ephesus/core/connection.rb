@@ -5,6 +5,7 @@ require 'securerandom'
 require 'plumbum'
 
 require 'ephesus/core'
+require 'ephesus/core/formats/errors/format_not_found'
 require 'ephesus/core/messages/error_notification'
 require 'ephesus/core/messaging/publisher'
 
@@ -19,8 +20,8 @@ module Ephesus::Core
     # Exception raised when unable to format an error notification.
     class FormatErrorNotificationError < StandardError; end
 
-    # Exception raised when a matching formatter is not defined.
-    class FormatNotFoundError < StandardError; end
+    NOT_FOUND = Object.new.freeze
+    private_constant :NOT_FOUND
 
     dependency :formats, default: {}, private: true
 
@@ -58,21 +59,30 @@ module Ephesus::Core
       subscribe_to_actor
     end
 
-    # Finds and returns a configured formatter for the connection.
-    #
-    # @return [Ephesus::Core::Formats::Formatter] the configured formatter.
-    #
-    # @raise [FormatNotFoundError] if there is not formatter matching the
-    #   configured format.
-    def formatter
-      @formatter ||=
-        formats
-        .fetch(format) do
-          error_message = "Formatter not found with format #{format.inspect}"
+    # (see Ephesus::Core::Formats::Formatter#format_input)
+    def format_input(**)
+      formatter&.format_input(**)&.then { |result| return result }
 
-          raise FormatNotFoundError, error_message
-        end
-        .new(**format_options)
+      error = Ephesus::Core::Formats::Errors::FormatNotFound.new(
+        format:,
+        message:       'unable to format input',
+        valid_formats: formats.keys
+      )
+
+      Cuprum::Result.new(error:)
+    end
+
+    # (see Ephesus::Core::Formats::Formatter#format_output)
+    def format_output(**)
+      formatter&.format_output(**)&.then { |result| return result }
+
+      error = Ephesus::Core::Formats::Errors::FormatNotFound.new(
+        format:,
+        message:       'unable to format output',
+        valid_formats: formats.keys
+      )
+
+      Cuprum::Result.new(error:)
     end
 
     # Handles input events received from the server.
@@ -93,7 +103,7 @@ module Ephesus::Core
     #
     # @return [void]
     def handle_notification(notification)
-      result = formatter.format_output(notification:)
+      result = format_output(notification:)
 
       # First, we try and format the error itself.
       if result.failure?
@@ -120,15 +130,28 @@ module Ephesus::Core
         current_actor:  notification.current_actor,
         original_actor: notification.original_actor,
         context:        notification.context,
+        error:          error,
         error_id:       SecureRandom.uuid_v7,
         message:        error&.message || 'An unknown error occurred',
         details:        details || {}
       )
 
-      formatter.format_output(notification:)
+      format_output(notification:)
     end
 
     def format_options = {}
+
+    def formatter
+      return if @formatter == NOT_FOUND
+
+      formatter =
+        formats[format]
+        &.then { |format_class| format_class.new(**format_options) }
+
+      @formatter = formatter || NOT_FOUND
+
+      @formatter == NOT_FOUND ? nil : @formatter
+    end
 
     def subscribe_to_actor
       subscribe(
