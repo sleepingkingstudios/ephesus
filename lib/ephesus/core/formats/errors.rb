@@ -7,6 +7,8 @@ require 'ephesus/core/scene'
 module Ephesus::Core::Formats
   # Namespace for errors returned by failing format implementations.
   module Errors
+    autoload :FormatNotFound,
+      'ephesus/core/formats/errors/format_not_found'
     autoload :InputError,
       'ephesus/core/formats/errors/input_error'
     autoload :OutputError,
