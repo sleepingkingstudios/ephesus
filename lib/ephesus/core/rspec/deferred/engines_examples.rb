@@ -353,6 +353,171 @@ module Ephesus::Core::RSpec::Deferred
       end
     end
 
+    deferred_examples 'should implement the event handling interface' do
+      describe '#enqueue_event' do
+        it 'should define the private method' do
+          expect(subject)
+            .to respond_to(:enqueue_event, true)
+            .with(0).arguments
+            .and_keywords(:event, :scene)
+        end
+      end
+
+      describe '#handle_event' do
+        it { expect(subject).to respond_to(:handle_event).with(1).argument }
+      end
+    end
+
+    deferred_examples 'should implement the event handling methods' do
+      describe '#enqueue_event' do
+        let(:event) { Ephesus::Core::Message.new }
+        let(:scene) do
+          instance_double(Ephesus::Core::Scene, enqueue_event: nil)
+        end
+
+        it 'should delegate to the scene' do
+          subject.send(:enqueue_event, event:, scene:)
+
+          expect(scene).to have_received(:enqueue_event).with(event)
+        end
+      end
+
+      describe '#handle_event' do
+        let(:connection) do
+          Ephesus::Core::Connection.new(format: 'spec.format')
+        end
+        let(:event) do
+          Ephesus::Core::Messages::LazyConnectionMessage.new(connection:)
+        end
+        let(:messages) { [] }
+
+        before(:example) do
+          allow(connection).to receive(:handle_notification) do |message|
+            messages << message
+          end
+        end
+
+        context 'when the connection does not have an actor' do
+          let(:expected_error) do
+            Ephesus::Core::Engines::Errors::MissingActor.new
+          end
+          let(:expected_message) do
+            be_a(Ephesus::Core::Messages::ErrorNotification)
+              .and have_attributes(
+                error:          expected_error,
+                original_actor: nil
+              )
+          end
+
+          it 'should publish an error notification to the connection' do
+            subject.handle_event(event)
+
+            expect(messages).to contain_exactly(expected_message)
+          end
+        end
+
+        context 'when the actor is not assigned to a scene' do
+          let(:actor) { Ephesus::Core::Actor.new }
+          let(:expected_error) do
+            Ephesus::Core::Engines::Errors::ActorNotAssignedScene.new(actor:)
+          end
+          let(:expected_message) do
+            be_a(Ephesus::Core::Messages::ErrorNotification)
+              .and have_attributes(
+                error:          expected_error,
+                original_actor: actor
+              )
+          end
+
+          before(:example) { connection.actor = actor }
+
+          it 'should publish an error notification to the connection' do
+            subject.handle_event(event)
+
+            expect(messages).to contain_exactly(expected_message)
+          end
+        end
+
+        context 'when the connection cannot format the event' do
+          let(:scene) { Ephesus::Core::Scene.new }
+          let(:actor) { Ephesus::Core::Actor.new }
+          let(:expected_error) do
+            connection.format_input(event:, scene:).error
+          end
+          let(:expected_message) do
+            be_a(Ephesus::Core::Messages::ErrorNotification)
+              .and have_attributes(
+                error:          expected_error,
+                original_actor: actor
+              )
+          end
+
+          before(:example) do
+            connection.actor = actor
+
+            actor.current_scene = scene
+          end
+
+          it 'should publish an error notification to the connection' do
+            subject.handle_event(event)
+
+            expect(messages).to contain_exactly(expected_message)
+          end
+        end
+
+        context 'when the connection formats the event' do
+          let(:scene)   { Spec::CustomScene.new }
+          let(:actor)   { Ephesus::Core::Actor.new }
+          let(:formats) { { 'spec.format' => Spec::CustomFormatter } }
+          let(:connection) do
+            Ephesus::Core::Connection.new(format: 'spec.format', formats:)
+          end
+          let(:formatted_message) do
+            Ephesus::Core::Formats::InputMessage.new(format: 'spec.format')
+          end
+          let(:result) { Cuprum::Result.new(value: formatted_message) }
+
+          example_class 'Spec::CustomFormatter' do |klass|
+            format_result = result
+
+            klass.define_method :initialize do |**options|
+              @options = options
+            end
+
+            klass.attr_reader :options
+
+            klass.define_method :format_input do |**|
+              format_result
+            end
+          end
+
+          example_class 'Spec::CustomScene', Ephesus::Core::Scene
+
+          before(:example) do
+            connection.actor = actor
+
+            actor.current_scene = scene
+
+            allow(subject).to receive(:enqueue_event)
+          end
+
+          it 'should enqueue the formatted event' do
+            subject.handle_event(event)
+
+            expect(subject)
+              .to have_received(:enqueue_event)
+              .with(event: formatted_message, scene:)
+          end
+
+          it 'should not publish an error notification' do
+            subject.handle_event(event)
+
+            expect(messages).to be == []
+          end
+        end
+      end
+    end
+
     deferred_examples 'should implement the scene management interface' do
       describe '.manage_scene' do
         it 'should define the class method' do

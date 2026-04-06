@@ -30,6 +30,10 @@ RSpec.describe Ephesus::Core::Engine do
 
   include_deferred 'should implement the connection management methods'
 
+  include_deferred 'should implement the event handling interface'
+
+  include_deferred 'should implement the event handling methods'
+
   include_deferred 'should implement the scene management interface'
 
   wrap_deferred 'with an engine subclass' do
