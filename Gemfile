@@ -4,13 +4,10 @@ source 'https://rubygems.org'
 
 gemspec
 
-ruby '4.0.2'
+ruby '4.0.3'
 
 gem 'plumbum',
   git: 'https://github.com/sleepingkingstudios/plumbum'
-
-gem 'sleeping_king_studios-tools',
-  git: 'https://github.com/sleepingkingstudios/sleeping_king_studios-tools'
 
 group :development, :test do
   gem 'byebug', '~> 12.0'
@@ -24,4 +21,7 @@ group :development, :test do
   gem 'rubocop-rspec', '~> 3.8'
 
   gem 'simplecov', '~> 0.22'
+
+  gem 'cuprum-cli', git: 'https://github.com/sleepingkingstudios/cuprum-cli'
+  gem 'thor', '~> 1.5'
 end

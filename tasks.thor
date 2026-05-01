@@ -1,0 +1,18 @@
+# frozen_string_literal: true
+
+require 'cuprum/cli/integrations/thor/registry'
+
+registry = Cuprum::Cli::Integrations::Thor::Registry.new
+
+################################################################################
+# CI Commands
+################################################################################
+
+registry.register Cuprum::Cli::Commands::Ci::RSpecCommand
+registry.register Cuprum::Cli::Commands::Ci::RSpecEachCommand
+
+################################################################################
+# File Commands
+################################################################################
+
+registry.register Cuprum::Cli::Commands::File::NewCommand
