@@ -1,0 +1,328 @@
+#!/usr/bin/env ruby
+
+require 'bundler'
+require 'byebug'
+
+Bundler.require(:default, :development)
+
+require 'async/http'
+require 'mustermann'
+
+require 'examples/chat'
+
+module Ephesus::Core
+  module Connections
+    module Buffered
+      def initialize(**)
+        super
+
+        @output_buffer = []
+
+        subscribe(self, channel: :output) do |message|
+          output_buffer << message
+        end
+      end
+
+      attr_reader :output_buffer
+
+      def flush_buffer
+        messages = @output_buffer
+
+        @output_buffer = []
+
+        messages
+      end
+    end
+  end
+end
+
+module Ephesus
+  module Protocols
+    module Http
+      Request = Data.define(:body, :headers, :http_method, :params, :path)
+
+      class Connection < Ephesus::Core::Connection
+        include Ephesus::Core::Connections::Buffered
+      end
+
+      class Action < Cuprum::Command
+        def initialize(engine:)
+          @engine = engine
+        end
+
+        attr_reader :engine
+      end
+
+      module Actions
+        class Connect < Ephesus::Protocols::Http::Action
+          private
+
+          def formats
+            [
+              Examples::Chat::Formats::PlainText::Formatter
+            ]
+              .to_h { |format| [format.type, format] }
+          end
+
+          def process(request)
+            name       = request.body
+            connection = Ephesus::Protocols::Http::Connection.new(
+              data:    { name: },
+              format:  Ephesus::Core::Formats::PlainText.type,
+              formats:
+            )
+
+            engine.add_connection(connection)
+
+            body = <<~BODY
+              You are now connected to the server with connection ID:
+
+              #{connection.id}
+            BODY
+
+            {
+              body:,
+              headers: {},
+              status:  201
+            }
+          end
+        end
+
+        class Help < Ephesus::Protocols::Http::Action
+          private
+
+          def process(_)
+            body = <<~TEXT
+              A Ruby chat server built using Ephesus.
+
+              The following endpoints are supported:
+
+              GET /, GET /help
+              : Displays this message
+
+              POST /connections
+              : Establishes a connection to the server. Returns the connection ID.
+
+              GET /connections/:id
+              : Requests any pending messages for the connection.
+
+              POST /connections/:id
+              : Sends a message to the server.
+
+              DELETE /connections/:id
+              : Closes the connection.
+            TEXT
+
+            {
+              body:,
+              headers: {},
+              status:  200
+            }
+          end
+        end
+
+        class InvalidRoute < Ephesus::Protocols::Http::Action
+          private
+
+          def process(request)
+            body =
+              "No valid resource for #{request.http_method} #{request.path}\n"
+
+            {
+              body:,
+              headers: {},
+              status:  404
+            }
+          end
+        end
+
+        module Connections
+          class Action < Ephesus::Protocols::Http::Action
+            private
+
+            def require_connection(params)
+              connection_id = params.fetch('id')
+
+              engine.send(:connections).fetch(connection_id)
+            end
+          end
+
+          class Poll < Ephesus::Protocols::Http::Actions::Connections::Action
+            private
+
+            def process(request)
+              connection = require_connection(request.params)
+              messages   = connection.flush_buffer
+              body       = messages.map { |str| "#{str.text}\n" }.join
+
+              {
+                body:,
+                headers: {},
+                status:  200
+              }
+            end
+          end
+
+          class Push < Ephesus::Protocols::Http::Actions::Connections::Action
+            private
+
+            def process(request)
+              connection = require_connection(request.params)
+              message    =
+                Ephesus::Core::Formats::PlainText::InputMessage
+                .new(text: request.body)
+
+              connection.handle_input(message)
+
+              {
+                body:    '',
+                headers: {},
+                status:  201
+              }
+            end
+          end
+        end
+      end
+
+      class Router < Cuprum::Command
+        Route = Data.define(:action, :http_method, :pattern) do
+          def match?(request)
+            return unless request.method.downcase.to_sym == http_method
+
+            pattern.match(request.path)
+          end
+
+          def parse(request)
+            body        = request.body&.read
+            headers     = request.headers
+            http_method = request.method
+            params      = pattern.params(request.path)
+            path        = request.path
+
+            Ephesus::Protocols::Http::Request
+              .new(body:, headers:, http_method:, params:, path:)
+          end
+        end
+
+        class << self
+          def get(pattern, action) = route(:get, pattern, action)
+
+          def post(pattern, action) = route(:post, pattern, action)
+
+          def route(http_method, pattern, action)
+            unless pattern.is_a?(Mustermann::Pattern)
+              pattern = Mustermann.new(pattern)
+            end
+
+            routes << Route.new(action:, http_method:, pattern:)
+          end
+
+          def routes = @routes ||= []
+        end
+
+        get '/',     Ephesus::Protocols::Http::Actions::Help
+        get '/help', Ephesus::Protocols::Http::Actions::Help
+
+        post '/connections', Ephesus::Protocols::Http::Actions::Connect
+
+        get '/connections/:id',
+          Ephesus::Protocols::Http::Actions::Connections::Poll
+        post '/connections/:id',
+          Ephesus::Protocols::Http::Actions::Connections::Push
+
+        private
+
+        def process(request)
+          # puts "[Router] Matching #{request.method} #{request.path}"
+
+          matching = self.class.routes.find { |route| route.match?(request) }
+
+          if matching
+            action_class = matching.action
+            request      = matching.parse(request)
+
+            return [action_class, request]
+          end
+
+          action_class = Ephesus::Protocols::Http::Actions::InvalidRoute
+          request      = Ephesus::Protocols::Http::Request.new(
+            body:        request.body&.read,
+            headers:     request.headers,
+            http_method: request.method,
+            params:      {},
+            path:        request.path
+          )
+
+          [action_class, request]
+        end
+      end
+
+      class Controller < Cuprum::Command
+        def initialize(engine:)
+          @engine = engine
+          @router = Ephesus::Protocols::Http::Router.new
+        end
+
+        attr_reader :engine
+
+        attr_reader :router
+
+        private
+
+        def build_response(result)
+          body    = result.value[:body]
+          headers = result.value[:headers]
+          status  = result.value[:status]
+
+          ::Protocol::HTTP::Response[status, headers, [body]]
+        end
+
+        # 1. Route request to action.
+        # 2. Call action with request.
+        # 3. Format result to HTTP response.
+        def process(request)
+          result = steps do
+            action_class, request = step { router.call(request) }
+
+            action = action_class.new(engine:)
+            result = action.call(request)
+          end
+
+          build_response(result)
+        end
+      end
+    end
+  end
+end
+
+################################################################################
+# Start Server
+################################################################################
+
+endpoint =
+  Async::HTTP::Endpoint
+  .parse('http://localhost:9292')
+  .with(timeout: 1)
+engine     =
+  Examples::Chat::Engine
+  .new
+  .extend(Ephesus::Core::Engines::AsynchronousEngine)
+controller = Ephesus::Protocols::Http::Controller.new(engine:)
+
+puts "Starting server on port #{endpoint.port}."
+
+Sync do
+  Async do
+    engine.start
+
+    server = Async::HTTP::Server.for(endpoint) do |request|
+      puts "[Server] Request received at #{request}"
+
+      result = controller.call(request)
+
+      result.value
+    end
+
+    server.run
+  end
+end

@@ -1,0 +1,67 @@
+#!/usr/bin/env ruby
+
+require 'bundler'
+require 'byebug'
+
+Bundler.require(:default, :development)
+
+require 'async/http'
+require 'async/http/internet/instance'
+
+def get(url, headers: { Connection: 'close' })
+  client = Async::HTTP::Internet.new
+
+  client.get(url, headers) do |response|
+    response.body&.read
+  ensure
+    response&.close
+  end
+end
+
+def post(url, headers: { Connection: 'close' }, body: '')
+  Sync do
+    client = Async::HTTP::Internet.new
+
+    client.post(url, headers, body) do |response|
+      response.body&.read
+    ensure
+      response&.close
+    end
+  end
+end
+
+endpoint = 'http://localhost:9292'
+
+puts "Enter user name:"
+print '> '
+
+name = gets.strip
+
+Sync do
+  response_body  = post("#{endpoint}/connections", body: name)
+  connection_id  = response_body.strip.lines.last
+  connection_url = "#{endpoint}/connections/#{connection_id}"
+
+  barrier   = Async::Barrier.new
+  semaphore = Async::Semaphore.new(2, parent: barrier)
+
+  semaphore.async do
+    loop do
+      text = get(connection_url)
+
+      puts text if text && !text.empty?
+
+      sleep 0.5
+    end
+  end
+
+  semaphore.async do
+    loop do
+      text = gets.strip
+
+      post(connection_url, body: text)
+
+      sleep 0
+    end
+  end
+end

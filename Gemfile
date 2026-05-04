@@ -6,6 +6,10 @@ gemspec
 
 ruby '4.0.4'
 
+gem 'async'
+gem 'async-http'
+gem 'mustermann'
+
 gem 'plumbum',
   git: 'https://github.com/sleepingkingstudios/plumbum'
 
