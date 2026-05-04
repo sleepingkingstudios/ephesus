@@ -12,6 +12,8 @@ module Ephesus::Core
     autoload :InputMessage,  'ephesus/core/formats/input_message'
     autoload :OutputMessage, 'ephesus/core/formats/output_message'
 
+    autoload :PlainText,     'ephesus/core/formats/plain_text'
+
     # Default format to use when a format is required but not applicable.
     DEFAULT_FORMAT = 'ephesus.core.formats.generic'
   end
