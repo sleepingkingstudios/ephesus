@@ -26,6 +26,19 @@ module Ephesus::Core
     # @return [Hash] a JSON-compatible representating of the actor.
     def as_json = { 'id' => id }
 
+    # Handles update connection messages from a Scene.
+    #
+    # By default, republishes the message to any subscribers.
+    #
+    # @param message [Ephesus::Core::Message] the received message.
+    #
+    # @return [void]
+    def handle_connection_update(message)
+      publish(message, channel: :connection_updates)
+
+      nil
+    end
+
     # Handles notification messages from a Scene.
     #
     # By default, republishes the notification to any subscribers.

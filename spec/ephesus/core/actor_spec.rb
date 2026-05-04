@@ -69,6 +69,25 @@ RSpec.describe Ephesus::Core::Actor do
     end
   end
 
+  describe '#handle_connection_update' do
+    let(:message)    { Ephesus::Core::Message.new }
+    let(:subscriber) { Spec::Subscriber.new }
+
+    before(:example) do
+      actor.add_subscription(subscriber, channel: :connection_updates)
+    end
+
+    it 'should define the method' do
+      expect(actor).to respond_to(:handle_connection_update).with(1).argument
+    end
+
+    it 'should publish the message to :connection_updates' do
+      actor.handle_connection_update(message)
+
+      expect(subscriber.messages).to be == [message]
+    end
+  end
+
   describe '#id' do
     let(:expected_format) { /\A\h{8}-\h{4}-\h{4}-\h{4}-\h{12}\z/ }
 
