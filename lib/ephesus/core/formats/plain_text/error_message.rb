@@ -1,27 +1,24 @@
 # frozen_string_literal: true
 
-require 'securerandom'
+require 'ephesus/core/formats/plain_text'
 
-require 'ephesus/core/formats'
-require 'ephesus/core/formats/output_message'
-
-module Ephesus::Core::Formats
-  # Abstract message for passing an error from a connection to a client.
+module Ephesus::Core::Formats::PlainText
+  # Error message for passing an error from a connection to a plain text client.
   ErrorMessage =
-    Ephesus::Core::Formats::OutputMessage
-    .define(:error, :error_id, :message, :details) do
+    Ephesus::Core::Formats::ErrorMessage.define(:text) do
       # @param error [Cuprum::Error] the error to report.
       # @param format [String] the configured format for the connection.
       # @param message [String] the error message.
       # @param error_id [String] a unique identifier for the error.
       # @param details [Hash] the error details.
+      # @param text [String] the text to display to the end user.
       def initialize( # rubocop:disable Metrics/ParameterLists
         error:,
         format:,
+        text:,
         message:  nil,
         error_id: nil,
-        details:  {},
-        **
+        details:  {}
       )
         error_id ||= SecureRandom.uuid_v7
         message  ||= error.message

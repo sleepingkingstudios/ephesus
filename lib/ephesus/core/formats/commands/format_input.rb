@@ -35,21 +35,25 @@ module Ephesus::Core::Formats::Commands
 
     private
 
-    def check_if_event_handled(input_event)
-      return if scene.class.handle_event?(input_event)
+    def check_if_event_handled(input_message)
+      return if scene.class.handle_event?(input_message)
 
-      failure(unhandled_event_error(input_event))
+      failure(unhandled_event_error(input_message))
     end
 
-    def process(input_event)
-      step { check_if_event_handled(input_event) }
+    def format_input(input_message) = input_message
 
-      input_event
+    def process(input_message)
+      input_message = step { format_input(input_message) }
+
+      step { check_if_event_handled(input_message) }
+
+      input_message
     end
 
-    def unhandled_event_error(input_event)
+    def unhandled_event_error(input_message)
       Ephesus::Core::Formats::Errors::UnhandledEvent
-        .new(event: input_event, scene:)
+        .new(event: input_message, scene:)
     end
   end
 end
