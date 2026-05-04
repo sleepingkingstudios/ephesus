@@ -11,7 +11,7 @@ require 'ephesus/core/messaging/publisher'
 
 module Ephesus::Core
   # Class representing an external connection to the server.
-  class Connection
+  class Connection # rubocop:disable Metrics/ClassLength
     include Plumbum::Consumer
     prepend Plumbum::Parameters
     include Ephesus::Core::Messaging::Publisher
@@ -19,6 +19,9 @@ module Ephesus::Core
 
     # Exception raised when unable to format an error notification.
     class FormatErrorNotificationError < StandardError; end
+
+    # Message dispatched to update a connection's properties from a Scene.
+    UpdateConnectionMessage = Ephesus::Core::Message.define(:data)
 
     NOT_FOUND = Object.new.freeze
     private_constant :NOT_FOUND
@@ -90,6 +93,18 @@ module Ephesus::Core
       Cuprum::Result.new(error:)
     end
 
+    # Handles updates to the connection data from the actor.
+    #
+    # @param message [Ephesus::Core::Connection::UpdateConnectionMessage] the
+    #   received message.
+    #
+    # @return [void]
+    def handle_connection_update(message)
+      @data = data.merge(message.data)
+
+      nil
+    end
+
     # Handles input events received from the server.
     #
     # @param message [Ephesus::Core::Message] the received input message.
@@ -103,7 +118,7 @@ module Ephesus::Core
 
     # Handles notifications received from the actor.
     #
-    # @param message [Ephesus::Core::Messages::Notification] the received
+    # @param notification [Ephesus::Core::Messages::Notification] the received
     #   notification.
     #
     # @return [void]
@@ -159,6 +174,12 @@ module Ephesus::Core
     end
 
     def subscribe_to_actor
+      subscribe(
+        actor,
+        channel:     :connection_updates,
+        method_name: :handle_connection_update
+      )
+
       subscribe(
         actor,
         channel:     :notifications,
