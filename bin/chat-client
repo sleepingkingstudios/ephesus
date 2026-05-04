@@ -1,0 +1,149 @@
+#!/usr/bin/env ruby
+
+require 'bundler'
+require 'byebug'
+
+Bundler.require(:default, :development)
+
+require 'async/http'
+require 'async/http/internet/instance'
+
+module Examples
+  module Chat
+    class HttpClient
+      def initialize(endpoint = 'http://localhost:9292')
+        @endpoint = endpoint
+        @client   = Async::HTTP::Internet.new
+      end
+
+      attr_reader :client
+
+      attr_reader :endpoint
+
+      def start
+        puts "Enter user name:"
+        print '> '
+
+        name = gets.strip
+
+        Async do
+          response_body  = post("#{endpoint}/connections", body: name)
+          @connection_id = response_body.strip.lines.last
+
+          barrier   = Async::Barrier.new
+          semaphore = Async::Semaphore.new(2, parent: barrier)
+
+          semaphore.async do
+            loop do
+              text = get(connection_url)
+
+              puts text if text && !text.empty?
+
+              sleep 0.5
+            end
+          end
+
+          semaphore.async do
+            loop do
+              text = gets.strip
+
+              post(connection_url, body: text)
+
+              sleep 0
+            end
+          end
+        end
+      end
+
+      private
+
+      attr_reader :connection_id
+
+      def connection_url
+        @connection_url ||= "#{endpoint}/connections/#{connection_id}"
+      end
+
+      def get(url, headers: { Connection: 'close' })
+        client.get(url, headers) do |response|
+          response.body&.read
+        ensure
+          response&.close
+        end
+      end
+
+      def post(url, headers: { Connection: 'close' }, body: '')
+        client.post(url, headers, body) do |response|
+          response.body&.read
+        ensure
+          response&.close
+        end
+      end
+    end
+
+    class TelnetClient
+      def initialize(endpoint = 'http://localhost:2323')
+        @endpoint = endpoint
+      end
+
+      attr_reader :endpoint
+
+      def start
+        Async do
+          endpoint = IO::Endpoint.tcp('localhost', 2323)
+
+          endpoint.connect do |socket|
+            loop do
+              read_messages(socket)
+
+              write_messages(socket)
+
+              sleep 0.1
+            end
+          end
+        end
+      end
+
+      private
+
+      def read_messages(socket)
+        buffer = ''
+        maxlen = 1_024
+
+        loop do
+          socket.read_nonblock(maxlen, buffer)
+        rescue Errno::ECONNRESET, IO::EAGAINWaitReadable
+          break
+        end
+
+        print(buffer) unless buffer.empty?
+      end
+
+      def write_messages(socket)
+        buffer = ''
+        maxlen = 1_024
+
+        loop do
+          STDIN.read_nonblock(maxlen, buffer)
+        rescue Errno::ECONNRESET, IO::EAGAINWaitReadable
+          break
+        end
+
+        socket.write(buffer) unless buffer.empty?
+      end
+    end
+  end
+end
+
+puts 'Select Protocol: http|telnet'
+print '> '
+
+protocol = gets.strip.downcase
+
+case protocol
+when 'http', ''
+  Examples::Chat::HttpClient.new.start
+when 'telnet'
+  Examples::Chat::TelnetClient.new.start
+else
+  raise "Unrecognized protocol #{protocol.inspect}"
+end
