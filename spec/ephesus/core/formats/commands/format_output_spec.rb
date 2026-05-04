@@ -75,6 +75,52 @@ RSpec.describe Ephesus::Core::Formats::Commands::FormatOutput do
         end
       end
     end
+
+    context 'with a subclass that formats output messages' do
+      let(:described_class) { Spec::FormatOutput }
+
+      # rubocop:disable RSpec/DescribedClass
+      example_class 'Spec::FormatOutput',
+        Ephesus::Core::Formats::Commands::FormatOutput \
+      do |klass|
+        klass.define_method :format_output do |notification|
+          return Spec::FormattedOutput.new if notification.original_actor
+
+          message = 'Actor not found.'
+          failure(Cuprum::Error.new(message:))
+        end
+      end
+      # rubocop:enable RSpec/DescribedClass
+
+      example_constant 'Spec::FormattedOutput' do
+        Ephesus::Core::Message.define
+      end
+
+      context 'when the output formatting returns a failing result' do
+        let(:notification) do
+          Ephesus::Core::Messages::Notification.new(original_actor: nil)
+        end
+        let(:expected_error) do
+          Cuprum::Error.new(message: 'Actor not found.')
+        end
+
+        it 'should return a failing result' do
+          expect(command.call(notification))
+            .to be_a_failing_result
+            .with_error(expected_error)
+        end
+      end
+
+      context 'when the output formatting returns a passing result' do
+        let(:expected_value) { Spec::FormattedOutput.new }
+
+        it 'should return a passing result' do
+          expect(command.call(notification))
+            .to be_a_passing_result
+            .with_value(expected_value)
+        end
+      end
+    end
   end
 
   describe '#format' do

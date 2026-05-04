@@ -7,8 +7,8 @@ module Ephesus::Core::Formats
   module PlainText
     include Ephesus::Core::Messages::Typing
 
-    autoload :ErrorMessage,  'ephesus/core/formats/error_message'
-    autoload :InputMessage,  'ephesus/core/formats/input_message'
-    autoload :OutputMessage, 'ephesus/core/formats/output_message'
+    autoload :ErrorMessage,  'ephesus/core/formats/plain_text/error_message'
+    autoload :InputMessage,  'ephesus/core/formats/plain_text/input_message'
+    autoload :OutputMessage, 'ephesus/core/formats/plain_text/output_message'
   end
 end

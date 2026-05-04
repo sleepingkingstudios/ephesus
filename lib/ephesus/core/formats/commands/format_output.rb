@@ -45,12 +45,16 @@ module Ephesus::Core::Formats::Commands
       )
     end
 
+    def format_output(notification)
+      failure(unhandled_notification_error(notification))
+    end
+
     def process(notification)
       if notification.is_a?(Ephesus::Core::Messages::ErrorNotification)
         return format_error_notification(notification)
       end
 
-      failure(unhandled_notification_error(notification))
+      format_output(notification)
     end
 
     def unhandled_notification_error(notification)
