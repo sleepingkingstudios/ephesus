@@ -73,8 +73,6 @@ RSpec.describe Ephesus::Core::Engines::ConnectionManagement do
     let(:connection) { Ephesus::Core::Connection.new(format: 'spec.format') }
     let(:actor)      { subject.send(:build_actor, connection) }
 
-    it { expect(actor).to be_a Ephesus::Core::Actors::ExternalActor }
-
-    it { expect(actor.connection).to be connection }
+    it { expect(actor).to be_a Ephesus::Core::Actor }
   end
 end

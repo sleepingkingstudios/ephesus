@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require 'ephesus/core/actors/external_actor'
+require 'ephesus/core/actor'
 require 'ephesus/core/engines'
 
 module Ephesus::Core::Engines
@@ -122,8 +122,8 @@ module Ephesus::Core::Engines
 
     attr_reader :connections
 
-    def build_actor(connection)
-      Ephesus::Core::Actors::ExternalActor.new(connection:)
+    def build_actor(_connection)
+      Ephesus::Core::Actor.new
     end
 
     def default_scene = nil
