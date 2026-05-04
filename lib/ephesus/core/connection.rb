@@ -25,14 +25,19 @@ module Ephesus::Core
 
     dependency :formats, default: {}, private: true
 
+    # @param data [String] additional data for the connection.
     # @param format [String] the configured format for the connection.
-    def initialize(format:)
+    def initialize(format:, data: {})
       @format = format
+      @data   = data
       @id     = SecureRandom.uuid_v7
     end
 
     # @return [Ephesus::Core::Actor] the game actor defined for the connection.
     attr_reader :actor
+
+    # @return [Hash] additional data for the connection.
+    attr_reader :data
 
     # @return [String] the configured format for the connection.
     attr_reader :format
