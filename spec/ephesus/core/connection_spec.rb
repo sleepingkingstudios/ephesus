@@ -40,7 +40,7 @@ RSpec.describe Ephesus::Core::Connection do
       expect(described_class)
         .to be_constructible
         .with(0).arguments
-        .and_keywords(:format)
+        .and_keywords(:data, :format)
     end
   end
 
@@ -141,6 +141,17 @@ RSpec.describe Ephesus::Core::Connection do
           expect(connection).not_to have_received(:handle_notification) # rubocop:disable RSpec/SubjectStub
         end
       end
+    end
+  end
+
+  describe '#data' do
+    include_examples 'should define reader', :data, -> { {} }
+
+    context 'when initialized with data: value' do
+      let(:data)                { { name: 'Alan Bradley' } }
+      let(:constructor_options) { super().merge(data:) }
+
+      it { expect(connection.data).to be == data }
     end
   end
 
