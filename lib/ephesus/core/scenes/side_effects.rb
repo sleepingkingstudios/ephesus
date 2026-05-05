@@ -35,10 +35,11 @@ module Ephesus::Core::Scenes
 
     def handle_side_effect(side_effect, *details)
       case side_effect
-      when :notify      then handle_notify(*details)
-      when :push_event  then handle_push_event(*details)
-      when :subscribe   then handle_subscribe(**details.first)
-      when :unsubscribe then handle_unsubscribe(**details.first)
+      when :notify            then handle_notify(*details)
+      when :push_event        then handle_push_event(*details)
+      when :subscribe         then handle_subscribe(**details.first)
+      when :unsubscribe       then handle_unsubscribe(**details.first)
+      when :update_connection then handle_update_connection(*details)
       else
         raise UnhandledSideEffectError,
           unhandled_side_effect_message_for(side_effect, details)
@@ -58,6 +59,16 @@ module Ephesus::Core::Scenes
 
       "no handler found for side effect #{side_effect.inspect} " \
         "(#{details_data})"
+    end
+
+    def handle_update_connection(actor_id, data)
+      actor = state.get('actors', actor_id)
+
+      return unless actor
+
+      message = Ephesus::Core::Connection::UpdateConnectionMessage.new(data:)
+
+      actor.handle_connection_update(message)
     end
   end
 end
