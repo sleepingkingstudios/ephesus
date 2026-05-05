@@ -60,5 +60,9 @@ module Ephesus::Core
     end
 
     def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
+
+    def update_connection(**data)
+      side_effects << [:update_connection, event.actor.id, data]
+    end
   end
 end

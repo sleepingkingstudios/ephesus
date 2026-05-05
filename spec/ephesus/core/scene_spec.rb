@@ -593,6 +593,76 @@ RSpec.describe Ephesus::Core::Scene do
         end
       end
     end
+
+    describe 'with an :update_connection effect' do
+      let(:side_effect) { :update_connection }
+      let(:actor)       { Spec::Actor.new }
+      let(:data)        { { name: 'Ed Dillinger', role: 'admin' } }
+      let(:state)       { { 'actors' => { actor.id => actor } } }
+      let(:constructor_options) do
+        super().merge(state:)
+      end
+
+      example_class 'Spec::Actor', Ephesus::Core::Actor do |klass|
+        klass.define_method(:connection_updates) { @connection_updates ||= [] }
+
+        klass.define_method(:handle_connection_update) do |message|
+          connection_updates << message
+        end
+      end
+
+      describe 'with a non-matching actor ID' do
+        let(:actor_id) { SecureRandom.uuid }
+
+        it 'should not push the update to the actor' do
+          scene.send(:handle_side_effect, side_effect, actor_id, data)
+
+          expect(actor.connection_updates).to be == []
+        end
+      end
+
+      describe 'with a matching actor ID' do
+        let(:actor_id) { actor.id }
+        let(:expected) do
+          [Ephesus::Core::Connection::UpdateConnectionMessage.new(data:)]
+        end
+
+        it 'should push the update to the actor' do
+          scene.send(:handle_side_effect, side_effect, actor_id, data)
+
+          expect(actor.connection_updates).to be == expected
+        end
+      end
+
+      context 'when the scene has many actors' do
+        let(:actor_id) { actor.id }
+        let(:actors) do
+          [actor, *Array.new(3) { Spec::Actor.new }]
+        end
+        let(:state) do
+          { 'actors' => actors.to_h { |actor| [actor.id, actor] } }
+        end
+        let(:expected) do
+          [Ephesus::Core::Connection::UpdateConnectionMessage.new(data:)]
+        end
+
+        it 'should push the update to the actor' do
+          scene.send(:handle_side_effect, side_effect, actor_id, data)
+
+          expect(actor.connection_updates).to be == expected
+        end
+
+        it 'should not push the update to the other actors',
+          :aggregate_failures \
+        do
+          scene.send(:handle_side_effect, side_effect, actor_id, data)
+
+          actors.reject { |item| item == actor }.each do |actor|
+            expect(actor.connection_updates).to be == []
+          end
+        end
+      end
+    end
   end
 
   describe '#id' do

@@ -35,6 +35,24 @@ RSpec.describe Ephesus::Core::Connection do
       -> { be_a(Class).and(be < StandardError) }
   end
 
+  describe '::UpdateConnectionMessage' do
+    subject(:message) { described_class.new(**constructor_options) }
+
+    let(:described_class)     { super()::UpdateConnectionMessage }
+    let(:data)                { { name: 'Ed Dillinger', role: 'admin' } }
+    let(:constructor_options) { { data: } }
+
+    describe '.members' do
+      let(:expected) { %i[data] }
+
+      it { expect(described_class.members).to be == expected }
+    end
+
+    describe '#error' do
+      include_examples 'should define reader', :data, -> { data }
+    end
+  end
+
   describe '.new' do
     it 'should define the constructor' do
       expect(described_class)
@@ -52,7 +70,10 @@ RSpec.describe Ephesus::Core::Connection do
     let(:message) { Ephesus::Core::Message.new }
 
     before(:example) do
-      allow(connection).to receive(:handle_notification) # rubocop:disable RSpec/SubjectStub
+      allow(connection).to receive_messages( # rubocop:disable RSpec/SubjectStub
+        handle_connection_update: nil,
+        handle_notification:      nil
+      )
     end
 
     include_examples 'should define writer', :actor=
@@ -104,6 +125,16 @@ RSpec.describe Ephesus::Core::Connection do
           .to be actor
       end
 
+      it 'should subscribe the connection to connection updates' do
+        connection.actor = actor
+
+        actor.publish(message, channel: :connection_updates)
+
+        expect(connection) # rubocop:disable RSpec/SubjectStub
+          .to have_received(:handle_connection_update)
+          .with(message)
+      end
+
       it 'should subscribe the connection to actor notifications' do
         connection.actor = actor
 
@@ -123,6 +154,16 @@ RSpec.describe Ephesus::Core::Connection do
             .to be actor
         end
 
+        it 'should subscribe the connection to connection updates' do
+          connection.actor = actor
+
+          actor.publish(message, channel: :connection_updates)
+
+          expect(connection) # rubocop:disable RSpec/SubjectStub
+            .to have_received(:handle_connection_update)
+            .with(message)
+        end
+
         it 'should subscribe the connection to actor notifications' do
           connection.actor = actor
 
@@ -133,11 +174,13 @@ RSpec.describe Ephesus::Core::Connection do
             .with(message)
         end
 
-        it 'should unsubscribe from the previous actor' do
+        it 'should unsubscribe from the previous actor', :aggregate_failures do
           connection.actor = actor
 
+          original_actor.publish(message, channel: :connection_updates)
           original_actor.publish(message, channel: :notifications)
 
+          expect(connection).not_to have_received(:handle_connection_update) # rubocop:disable RSpec/SubjectStub
           expect(connection).not_to have_received(:handle_notification) # rubocop:disable RSpec/SubjectStub
         end
       end
@@ -449,6 +492,39 @@ RSpec.describe Ephesus::Core::Connection do
 
           expect(subscriber.messages).to be == [message]
         end
+      end
+    end
+  end
+
+  describe '#handle_connection_update' do
+    let(:data) { { name: 'Ed Dillinger', role: 'admin' } }
+    let(:message) do
+      described_class::UpdateConnectionMessage.new(data:)
+    end
+
+    it 'should define the method' do
+      expect(connection)
+        .to respond_to(:handle_connection_update)
+        .with(1).argument
+    end
+
+    it 'should update the connection data' do
+      connection.handle_connection_update(message)
+
+      expect(connection.data).to be == data
+    end
+
+    context 'when the connection has existing data' do
+      let(:original_data) do
+        { name: 'Alan Bradley', company: 'Encom' }
+      end
+      let(:constructor_options) { super().merge(data: original_data) }
+      let(:expected)            { original_data.merge(data) }
+
+      it 'should update the connection data' do
+        connection.handle_connection_update(message)
+
+        expect(connection.data).to be == expected
       end
     end
   end

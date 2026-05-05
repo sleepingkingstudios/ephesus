@@ -268,4 +268,42 @@ RSpec.describe Ephesus::Core::Command do
       it { expect(command.state).to be == state }
     end
   end
+
+  describe '#update_connection' do
+    let(:actor) { Ephesus::Core::Actor.new }
+    let(:event) { Ephesus::Core::Message.define(:actor).new(actor:) }
+
+    it 'should define the private method' do
+      expect(command)
+        .to respond_to(:update_connection, true)
+        .with(0).arguments
+        .and_any_keywords
+    end
+
+    wrap_deferred 'with a custom command class' do
+      let(:implementation) do
+        ->(**) { update_connection(ok: true) }
+      end
+
+      context 'when the command has been called' do
+        let(:expected) do
+          [
+            [
+              :update_connection,
+              actor.id,
+              { ok: true }
+            ]
+          ]
+        end
+
+        before(:example) { command.call(event:, state:) }
+
+        it 'should add the connection update to side effects' do
+          command.call(event:, state:)
+
+          expect(command.side_effects).to be == expected
+        end
+      end
+    end
+  end
 end
