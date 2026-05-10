@@ -39,7 +39,7 @@ module Ephesus::Core
     #   defined default state, if any.
     def initialize(state: {})
       @id          = SecureRandom.uuid_v7
-      @event_queue = []
+      @event_queue = Thread::Queue.new
       @event_stack = []
       @state       = build_state(state)
     end
@@ -63,7 +63,11 @@ module Ephesus::Core
     #
     # @return [self]
     def call
-      event = event_queue.shift
+      begin
+        event = event_queue.pop(true)
+      rescue ThreadError
+        nil
+      end
 
       return self unless event
 

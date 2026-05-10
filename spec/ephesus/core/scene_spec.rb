@@ -26,6 +26,15 @@ RSpec.describe Ephesus::Core::Scene do
       .to_h { |command_class| [command_class.type, command_class] }
   end
 
+  define_method :queued_events do
+    queue  = scene.send(:event_queue)
+    events = []
+
+    events << queue.pop until queue.empty?
+
+    events
+  end
+
   define_method :tools do
     SleepingKingStudios::Tools::Toolbelt.instance
   end
@@ -232,7 +241,7 @@ RSpec.describe Ephesus::Core::Scene do
             change { scene.send(:event_queue).size }.by(-1)
           )
 
-          expect(scene.send(:event_queue)).to be == events[1..]
+          expect(queued_events).to be == events[1..]
         end
 
         it 'should update the state' do
@@ -323,25 +332,23 @@ RSpec.describe Ephesus::Core::Scene do
   describe '#enqueue_event' do
     let(:event) { Ephesus::Core::Message.new }
 
-    define_method :enqueued_events do
-      scene.send(:event_queue)
-    end
-
     it { expect(scene).to respond_to(:enqueue_event).with(1).argument }
 
     it { expect(scene).to have_aliased_method(:enqueue_event).as(:enqueue) }
 
-    it 'should push the event onto the events queue' do
+    it 'should push the event onto the events queue', :aggregate_failures do
       expect { scene.enqueue_event(event) }.to(
-        change { enqueued_events }.to(
-          satisfy { |queue| queue.size == 1 && queue.last == event }
-        )
+        change { scene.send(:event_queue).size }.to(be 1)
       )
+
+      expect(queued_events).to contain_exactly(event)
     end
   end
 
   describe '#event_queue' do
-    include_examples 'should define private reader', :event_queue, []
+    include_examples 'should define private reader',
+      :event_queue,
+      -> { be_a(Thread::Queue).and have_attributes(empty?: true) }
   end
 
   describe '#event_stack' do
