@@ -25,6 +25,62 @@ module Ephesus::Core::RSpec::Deferred
       end
     end
 
+    deferred_context 'when the scene handles the event' do
+      let(:processed_events) { [] }
+
+      example_class 'Spec::AddCommand', Ephesus::Core::Command do |klass|
+        events = processed_events
+
+        klass.const_set(:Event, Ephesus::Core::Message.define(:amount))
+
+        klass.define_method(:process) do |event:, **|
+          events << event
+
+          event.amount.times do
+            push_event(Spec::IncrementCommand::Event.new)
+          end
+
+          success
+        end
+      end
+
+      example_class 'Spec::IncrementCommand', Ephesus::Core::Command \
+      do |klass|
+        events = processed_events
+
+        klass.const_set(:Event, Ephesus::Core::Message.define)
+
+        klass.define_method(:process) do |event:, state:, **|
+          events << event
+
+          state.set('value', value: state.fetch('value', default: 0) + 1)
+        end
+      end
+
+      example_class 'Spec::MultiplyCommand', Ephesus::Core::Command \
+      do |klass|
+        events = processed_events
+
+        klass.const_set(:Event, Ephesus::Core::Message.define(:amount))
+
+        klass.define_method(:process) do |event:, state:|
+          events << event
+
+          (event.amount - 1).times do
+            push_event(Spec::AddCommand::Event.new(state.get('value')))
+          end
+
+          success
+        end
+      end
+
+      before(:example) do
+        described_class.handle_event Spec::AddCommand
+        described_class.handle_event Spec::IncrementCommand
+        described_class.handle_event Spec::MultiplyCommand
+      end
+    end
+
     deferred_examples 'should handle event' do |command_class = nil, type: nil|
       # rubocop:disable RSpec/LeakyLocalVariable
       event_type = type || command_class
@@ -74,7 +130,9 @@ module Ephesus::Core::RSpec::Deferred
       end
 
       describe '#handle_event' do
-        it { expect(scene).to respond_to(:handle_event, true).with(1).argument }
+        it 'should define the private method' do
+          expect(subject).to respond_to(:handle_event, true).with(1).argument
+        end
       end
     end
 
@@ -530,7 +588,7 @@ module Ephesus::Core::RSpec::Deferred
           end
 
           it 'should raise an exception' do
-            expect { scene.send(:handle_event, event) }.to raise_error(
+            expect { subject.send(:handle_event, event) }.to raise_error(
               described_class::UnhandledEventError,
               error_message
             )
@@ -549,7 +607,7 @@ module Ephesus::Core::RSpec::Deferred
           before(:example) do
             described_class.handle_event(command_class, event_type: event)
 
-            allow(scene).to receive(:handle_side_effect) \
+            allow(subject).to receive(:handle_side_effect) \
             do |side_effect, details|
               side_effects << [side_effect, *details]
             end
@@ -558,22 +616,22 @@ module Ephesus::Core::RSpec::Deferred
           it 'should initialize the command' do
             allow(command_class).to receive(:new).and_call_original
 
-            scene.send(:handle_event, event)
+            subject.send(:handle_event, event)
 
             expect(command_class).to have_received(:new).with(no_args)
           end
 
           it 'should call the command with the event and state' do # rubocop:disable RSpec/ExampleLength
-            mock_result  = Cuprum::Result.new(value: scene.state)
+            mock_result  = Cuprum::Result.new(value: subject.state)
             mock_command = instance_double(command_class, call: mock_result)
 
             allow(command_class).to receive(:new).and_return(mock_command)
 
-            scene.send(:handle_event, event)
+            subject.send(:handle_event, event)
 
             expect(mock_command)
               .to have_received(:call)
-              .with(event:, state: scene.state)
+              .with(event:, state: subject.state)
           end
 
           context 'when the command returns a passing result' do
@@ -581,19 +639,19 @@ module Ephesus::Core::RSpec::Deferred
             let(:expected_value) { { ok: true } }
 
             it 'should return a passing result' do
-              expect(scene.send(:handle_event, event))
+              expect(subject.send(:handle_event, event))
                 .to be_a_passing_result
                 .with_value(expected_value)
             end
 
             it 'should not update the scene state' do
-              expect { scene.send(:handle_event, event) }.not_to(
-                change { scene.state.to_h }
+              expect { subject.send(:handle_event, event) }.not_to(
+                change { subject.state.to_h }
               )
             end
 
             it 'should not handle any side effects' do
-              scene.send(:handle_event, event)
+              subject.send(:handle_event, event)
 
               expect(side_effects).to be == []
             end
@@ -602,24 +660,24 @@ module Ephesus::Core::RSpec::Deferred
               let(:implementation) do
                 state =
                   Ephesus::Core::State
-                  .new(scene.state.to_h)
+                  .new(subject.state.to_h)
                   .set('checksum', value: 0xdeadbeef)
 
                 ->(**) { state }
               end
               let!(:expected_state) do
-                scene.state.to_h.merge('checksum' => 0xdeadbeef)
+                subject.state.to_h.merge('checksum' => 0xdeadbeef)
               end
               let(:expected_value) { Ephesus::Core::State.new(expected_state) }
 
               it 'should update the scene state' do
-                expect { scene.send(:handle_event, event) }.to(
-                  change { scene.state.to_h }.to(be == expected_state)
+                expect { subject.send(:handle_event, event) }.to(
+                  change { subject.state.to_h }.to(be == expected_state)
                 )
               end
 
               it 'should not handle any side effects' do
-                scene.send(:handle_event, event)
+                subject.send(:handle_event, event)
 
                 expect(side_effects).to be == []
               end
@@ -629,7 +687,7 @@ module Ephesus::Core::RSpec::Deferred
               let(:implementation) do
                 state =
                   Ephesus::Core::State
-                  .new(scene.state.to_h)
+                  .new(subject.state.to_h)
                   .set('checksum', value: 0xdeadbeef)
 
                 lambda do |**|
@@ -642,7 +700,7 @@ module Ephesus::Core::RSpec::Deferred
                 end
               end
               let!(:expected_state) do
-                scene.state.to_h.merge('checksum' => 0xdeadbeef)
+                subject.state.to_h.merge('checksum' => 0xdeadbeef)
               end
               let(:expected_side_effects) do
                 [
@@ -652,13 +710,13 @@ module Ephesus::Core::RSpec::Deferred
               end
 
               it 'should update the scene state' do
-                expect { scene.send(:handle_event, event) }.to(
-                  change { scene.state.to_h }.to(be == expected_state)
+                expect { subject.send(:handle_event, event) }.to(
+                  change { subject.state.to_h }.to(be == expected_state)
                 )
               end
 
               it 'should handle the side effects' do
-                scene.send(:handle_event, event)
+                subject.send(:handle_event, event)
 
                 expect(side_effects).to be == expected_side_effects
               end
@@ -681,13 +739,13 @@ module Ephesus::Core::RSpec::Deferred
               end
 
               it 'should not update the scene state' do
-                expect { scene.send(:handle_event, event) }.not_to(
-                  change { scene.state.to_h }
+                expect { subject.send(:handle_event, event) }.not_to(
+                  change { subject.state.to_h }
                 )
               end
 
               it 'should handle the side effects' do
-                scene.send(:handle_event, event)
+                subject.send(:handle_event, event)
 
                 expect(side_effects).to be == expected_side_effects
               end
@@ -705,13 +763,13 @@ module Ephesus::Core::RSpec::Deferred
             end
 
             it 'should return a failing result' do
-              expect(scene.send(:handle_event, event))
+              expect(subject.send(:handle_event, event))
                 .to be_a_failing_result
                 .with_error(expected_error)
             end
 
             it 'should not handle any side effects' do
-              scene.send(:handle_event, event)
+              subject.send(:handle_event, event)
 
               expect(side_effects).to be == []
             end
@@ -721,31 +779,31 @@ module Ephesus::Core::RSpec::Deferred
                 error = expected_error
                 state =
                   Ephesus::Core::State
-                  .new(scene.state.to_h)
+                  .new(subject.state.to_h)
                   .set('checksum', value: 0xdeadbeef)
 
                 ->(**) { Cuprum::Result.new(value: state, error:) }
               end
               let!(:expected_state) do
-                scene.state.to_h.merge('checksum' => 0xdeadbeef)
+                subject.state.to_h.merge('checksum' => 0xdeadbeef)
               end
               let(:expected_value) { Ephesus::Core::State.new(expected_state) }
 
               it 'should return a failing result' do
-                expect(scene.send(:handle_event, event))
+                expect(subject.send(:handle_event, event))
                   .to be_a_failing_result
                   .with_value(expected_value)
                   .and_error(expected_error)
               end
 
               it 'should not update the scene state' do
-                expect { scene.send(:handle_event, event) }.not_to(
-                  change { scene.state.to_h }
+                expect { subject.send(:handle_event, event) }.not_to(
+                  change { subject.state.to_h }
                 )
               end
 
               it 'should not handle any side effects' do
-                scene.send(:handle_event, event)
+                subject.send(:handle_event, event)
 
                 expect(side_effects).to be == []
               end
@@ -756,7 +814,7 @@ module Ephesus::Core::RSpec::Deferred
                 error = expected_error
                 state =
                   Ephesus::Core::State
-                  .new(scene.state.to_h)
+                  .new(subject.state.to_h)
                   .set('checksum', value: 0xdeadbeef)
 
                 lambda do |**|
@@ -776,13 +834,13 @@ module Ephesus::Core::RSpec::Deferred
               end
 
               it 'should not update the scene state' do
-                expect { scene.send(:handle_event, event) }.not_to(
-                  change { scene.state.to_h }
+                expect { subject.send(:handle_event, event) }.not_to(
+                  change { subject.state.to_h }
                 )
               end
 
               it 'should handle the side effects' do
-                scene.send(:handle_event, event)
+                subject.send(:handle_event, event)
 
                 expect(side_effects).to be == expected_side_effects
               end
@@ -807,19 +865,917 @@ module Ephesus::Core::RSpec::Deferred
               end
 
               it 'should not update the scene state' do
-                expect { scene.send(:handle_event, event) }.not_to(
-                  change { scene.state.to_h }
+                expect { subject.send(:handle_event, event) }.not_to(
+                  change { subject.state.to_h }
                 )
               end
 
               it 'should handle the side effects' do
-                scene.send(:handle_event, event)
+                subject.send(:handle_event, event)
 
                 expect(side_effects).to be == expected_side_effects
               end
             end
           end
         end
+      end
+    end
+
+    deferred_examples 'should implement the event processing interface' do
+      describe '#enqueue_event' do
+        it { expect(subject).to respond_to(:enqueue_event).with(1).argument }
+
+        it 'should alias the method' do
+          expect(subject).to have_aliased_method(:enqueue_event).as(:enqueue)
+        end
+      end
+
+      describe '#event_queue' do
+        include_examples 'should define private reader', :event_queue
+      end
+
+      describe '#event_stack' do
+        include_examples 'should define private reader', :event_stack
+      end
+
+      describe '#call' do
+        it 'should define the method' do
+          expect(subject)
+            .to respond_to(:call)
+            .with(0).arguments
+            .and_keywords(:batch_size, :thread_safe)
+        end
+      end
+
+      describe '#processing?' do
+        include_examples 'should define predicate', :processing?
+      end
+    end
+
+    deferred_examples 'should implement the event processing methods' do
+      describe '#enqueue_event' do
+        let(:event) { Ephesus::Core::Message.new }
+
+        define_method :queued_events do
+          queue  = subject.send(:event_queue)
+          events = []
+
+          events << queue.pop until queue.empty?
+
+          events
+        end
+
+        it 'should push the event onto the events queue', :aggregate_failures do
+          expect { subject.enqueue_event(event) }.to(
+            change { subject.send(:event_queue).size }.to(be 1)
+          )
+
+          expect(queued_events).to contain_exactly(event)
+        end
+      end
+
+      describe '#event_queue' do
+        it 'should return an empty queue' do
+          expect(subject.send(:event_queue))
+            .to be_a(Thread::Queue)
+            .and have_attributes(empty?: true)
+        end
+      end
+
+      describe '#event_stack' do
+        it { expect(subject.send(:event_stack)).to be == [] }
+      end
+
+      describe '#call' do
+        let(:options) { {} }
+
+        define_method :process_events do
+          subject.call(**options)
+        end
+
+        define_method :queued_events do
+          queue  = subject.send(:event_queue)
+          events = []
+
+          events << queue.pop until queue.empty?
+
+          events
+        end
+
+        context 'when there are no queued events' do
+          it { expect(process_events).to be false }
+        end
+
+        context 'when there is one queued event' do
+          let(:event) { Spec::IncrementCommand::Event.new }
+
+          before(:example) { subject.enqueue_event(event) }
+
+          include_deferred 'when the scene handles the event'
+
+          it { expect(process_events).to be true }
+
+          it 'should process the event' do
+            process_events
+
+            expect(processed_events).to be == [event]
+          end
+
+          it 'should update the state' do
+            process_events
+
+            expect(scene.state.get('value')).to be 1
+          end
+
+          it 'should remove the event from the queue', :aggregate_failures do
+            expect { process_events }.to(
+              change { scene.send(:event_queue).size }.by(-1)
+            )
+
+            expect(queued_events).to be == []
+          end
+
+          describe 'with thread_safe: false' do
+            let(:options) { super().merge(thread_safe: false) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the event' do
+              process_events
+
+              expect(processed_events).to be == [event]
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 1
+            end
+
+            it 'should remove the event from the queue', :aggregate_failures do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-1)
+              )
+
+              expect(queued_events).to be == []
+            end
+          end
+
+          context 'when the scene is already processing events' do
+            before(:example) do
+              allow(subject).to receive(:processing?).and_return(true)
+            end
+
+            it { expect(process_events).to be false }
+
+            it 'should not process the event' do
+              process_events
+
+              expect(processed_events).to be == []
+            end
+
+            it 'should not update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be nil
+            end
+
+            it 'should not remove the event from the queue' do
+              expect { process_events }.not_to(
+                change { scene.send(:event_queue).size }
+              )
+            end
+          end
+        end
+
+        context 'when there are many queued events' do
+          let(:events) { Array.new(3) { Spec::IncrementCommand::Event.new } }
+
+          before(:example) do
+            events.each { |event| subject.enqueue_event(event) }
+          end
+
+          include_deferred 'when the scene handles the event'
+
+          it { expect(process_events).to be true }
+
+          it 'should process the next event' do
+            process_events
+
+            expect(processed_events).to be == [events.first]
+          end
+
+          it 'should update the state' do
+            process_events
+
+            expect(scene.state.get('value')).to be 1
+          end
+
+          it 'should remove the next event from the queue',
+            :aggregate_failures \
+          do
+            expect { process_events }.to(
+              change { scene.send(:event_queue).size }.by(-1)
+            )
+
+            expect(queued_events).to be == events[1..]
+          end
+
+          describe 'with batch_size: value' do
+            let(:options) { super().merge(batch_size: 2) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the specified number of events' do
+              process_events
+
+              expect(processed_events).to be == events[..1]
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 2
+            end
+
+            it 'should remove the processed events from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-2)
+              )
+
+              expect(queued_events).to be == events[2..]
+            end
+          end
+
+          describe 'with thread_safe: false' do
+            let(:options) { super().merge(thread_safe: false) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the next event' do
+              process_events
+
+              expect(processed_events).to be == [events.first]
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 1
+            end
+
+            it 'should remove the next event from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-1)
+              )
+
+              expect(queued_events).to be == events[1..]
+            end
+          end
+        end
+
+        context 'when the environment is multi-threaded' do
+          let(:events) do
+            [
+              Spec::AddCommand::Event.new(amount: 1),
+              Spec::AddCommand::Event.new(amount: 2),
+              Spec::AddCommand::Event.new(amount: 3)
+            ]
+          end
+
+          define_method :process_events do
+            Array
+              .new(3) { Thread.new { subject.call(**options) } }
+              .map(&:join)
+          end
+
+          before(:example) do
+            # Force thread to yield mid-function.
+            allow(subject.send(:event_queue))
+              .to receive(:empty?)
+              .and_wrap_original do |original|
+                sleep 0
+
+                original.call
+              end
+
+            events.each { |event| subject.enqueue_event(event) }
+
+            Spec::AddCommand.define_method(:process) do |event:, **|
+              value = state.fetch('value', default: 0) + event.amount
+
+              sleep 0
+
+              state.set('value', value:)
+            end
+          end
+
+          include_deferred 'when the scene handles the event'
+
+          it 'should update the state', :aggregate_failures do
+            process_events
+
+            expect(scene.state.get('value')).to be 6
+          end
+
+          describe 'with thread_safe: false' do
+            let(:options) { super().merge(thread_safe: false) }
+
+            it 'should update the state', :aggregate_failures do
+              process_events
+
+              expect(scene.state.get('value'))
+                .to(satisfy { |value| (1..3).cover?(value) })
+            end
+          end
+        end
+      end
+
+      describe '#process_events' do
+        deferred_examples 'should flag the scene as processing events' do
+          let(:event)    { Spec::CheckProcessing::Event.new }
+          let(:captured) { Struct.new(:processing).new }
+
+          example_class 'Spec::CheckProcessing', Ephesus::Core::Command \
+          do |klass|
+            current_scene = subject
+            scene_status  = captured
+
+            klass.const_set(:Event, Ephesus::Core::Message.define)
+
+            klass.define_method(:process) do |**|
+              scene_status.processing = current_scene.processing?
+
+              success
+            end
+          end
+
+          before(:example) do
+            described_class.handle_event Spec::CheckProcessing
+          end
+
+          it 'should flag the scene as processing events', :aggregate_failures \
+          do
+            expect(subject.processing?).to be false
+
+            process_events
+
+            expect(subject.processing?).to be false
+            expect(captured.processing).to be true
+          end
+        end
+
+        let(:options) { {} }
+
+        define_method :process_events do
+          subject.send(:process_events, **options)
+        end
+
+        define_method :queued_events do
+          queue  = subject.send(:event_queue)
+          events = []
+
+          events << queue.pop until queue.empty?
+
+          events
+        end
+
+        it 'should define the private method' do
+          expect(scene)
+            .to respond_to(:process_events, true)
+            .with(0).arguments
+            .and_keywords(:batch_size)
+        end
+
+        context 'when there are no queued events' do
+          it { expect(process_events).to be false }
+        end
+
+        context 'when there is one queued event' do
+          let(:event) { Spec::IncrementCommand::Event.new }
+
+          before(:example) { subject.enqueue_event(event) }
+
+          include_deferred 'when the scene handles the event'
+
+          it { expect(process_events).to be true }
+
+          it 'should process the event' do
+            process_events
+
+            expect(processed_events).to be == [event]
+          end
+
+          it 'should update the state' do
+            process_events
+
+            expect(scene.state.get('value')).to be 1
+          end
+
+          it 'should remove the event from the queue', :aggregate_failures do
+            expect { process_events }.to(
+              change { scene.send(:event_queue).size }.by(-1)
+            )
+
+            expect(queued_events).to be == []
+          end
+
+          wrap_deferred 'should flag the scene as processing events'
+
+          describe 'with batch_size: value' do
+            let(:options) { super().merge(batch_size: 2) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the event' do
+              process_events
+
+              expect(processed_events).to be == [event]
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 1
+            end
+
+            it 'should remove the event from the queue', :aggregate_failures do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-1)
+              )
+
+              expect(queued_events).to be == []
+            end
+          end
+        end
+
+        context 'when there are many queued events' do
+          let(:events) { Array.new(3) { Spec::IncrementCommand::Event.new } }
+
+          before(:example) do
+            events.each { |event| subject.enqueue_event(event) }
+          end
+
+          include_deferred 'when the scene handles the event'
+
+          it { expect(process_events).to be true }
+
+          it 'should process the next event' do
+            process_events
+
+            expect(processed_events).to be == [events.first]
+          end
+
+          it 'should update the state' do
+            process_events
+
+            expect(scene.state.get('value')).to be 1
+          end
+
+          it 'should remove the next event from the queue',
+            :aggregate_failures \
+          do
+            expect { process_events }.to(
+              change { scene.send(:event_queue).size }.by(-1)
+            )
+
+            expect(queued_events).to be == events[1..]
+          end
+
+          describe 'with batch_size: less than queue size' do
+            let(:options) { super().merge(batch_size: 2) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the specified number of events' do
+              process_events
+
+              expect(processed_events).to be == events[..1]
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 2
+            end
+
+            it 'should remove the processed events from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-2)
+              )
+
+              expect(queued_events).to be == events[2..]
+            end
+          end
+
+          describe 'with batch_size: greater than or equal to queue size' do
+            let(:options) { super().merge(batch_size: 4) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the specified number of events' do
+              process_events
+
+              expect(processed_events).to be == events
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 3
+            end
+
+            it 'should remove the processed events from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-3)
+              )
+
+              expect(queued_events).to be == []
+            end
+          end
+        end
+
+        context 'when the handled events push events onto the stack' do
+          let(:events) do
+            [
+              Spec::AddCommand::Event.new(amount: 2),
+              Spec::MultiplyCommand::Event.new(amount: 3),
+              Spec::AddCommand::Event.new(amount: 4)
+            ]
+          end
+          let(:expected_events) do
+            [
+              Spec::AddCommand::Event.new(amount: 2),
+              Spec::IncrementCommand::Event.new,
+              Spec::IncrementCommand::Event.new
+            ]
+          end
+
+          before(:example) do
+            events.each { |event| subject.enqueue_event(event) }
+          end
+
+          include_deferred 'when the scene handles the event'
+
+          it { expect(process_events).to be true }
+
+          it 'should process the next event and stacked events' do
+            process_events
+
+            expect(processed_events).to be == expected_events
+          end
+
+          it 'should update the state' do
+            process_events
+
+            expect(scene.state.get('value')).to be 2
+          end
+
+          it 'should remove the next event from the queue',
+            :aggregate_failures \
+          do
+            expect { process_events }.to(
+              change { scene.send(:event_queue).size }.by(-1)
+            )
+
+            expect(queued_events).to be == events[1..]
+          end
+
+          describe 'with batch_size: less than event count for next event' do
+            let(:options) { super().merge(batch_size: 2) }
+
+            it { expect(process_events).to be true }
+
+            it 'should process the next event and stacked events' do
+              process_events
+
+              expect(processed_events).to be == expected_events
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 2
+            end
+
+            it 'should remove the next event from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-1)
+              )
+
+              expect(queued_events).to be == events[1..]
+            end
+          end
+
+          describe 'with batch_size: less than event count for next 2 events' do
+            let(:options) { super().merge(batch_size: 4) }
+            let(:expected_events) do
+              [
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::MultiplyCommand::Event.new(amount: 3),
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new
+              ]
+            end
+
+            it { expect(process_events).to be true }
+
+            it 'should process the next event and stacked events' do
+              process_events
+
+              expect(processed_events).to be == expected_events
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 6
+            end
+
+            it 'should remove the next 2 events from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-2)
+              )
+
+              expect(queued_events).to be == events[2..]
+            end
+          end
+
+          describe 'with batch_size: equal to event count for next events' do
+            let(:options) { super().merge(batch_size: 10) }
+            let(:expected_events) do
+              [
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::MultiplyCommand::Event.new(amount: 3),
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new
+              ]
+            end
+
+            it { expect(process_events).to be true }
+
+            it 'should process the next event and stacked events' do
+              process_events
+
+              expect(processed_events).to be == expected_events
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 6
+            end
+
+            it 'should remove the next 2 events from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-2)
+              )
+
+              expect(queued_events).to be == events[2..]
+            end
+          end
+
+          describe 'with batch_size: greater than count for next events' do
+            let(:options) { super().merge(batch_size: 11) }
+            let(:expected_events) do
+              [
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::MultiplyCommand::Event.new(amount: 3),
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::AddCommand::Event.new(amount: 2),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::AddCommand::Event.new(amount: 4),
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new,
+                Spec::IncrementCommand::Event.new
+              ]
+            end
+
+            it { expect(process_events).to be true }
+
+            it 'should process the next event and stacked events' do
+              process_events
+
+              expect(processed_events).to be == expected_events
+            end
+
+            it 'should update the state' do
+              process_events
+
+              expect(scene.state.get('value')).to be 10
+            end
+
+            it 'should remove the processed events from the queue',
+              :aggregate_failures \
+            do
+              expect { process_events }.to(
+                change { scene.send(:event_queue).size }.by(-3)
+              )
+
+              expect(queued_events).to be == []
+            end
+          end
+        end
+      end
+
+      describe '#process_next_event' do
+        let(:processed_events) { [] }
+
+        define_method :process_event do
+          subject.send :process_next_event
+        end
+
+        define_method :queued_events do
+          queue  = subject.send(:event_queue)
+          events = []
+
+          events << queue.pop until queue.empty?
+
+          events
+        end
+
+        it 'should define the private method' do
+          expect(scene)
+            .to respond_to(:process_next_event, true)
+            .with(0).arguments
+        end
+
+        context 'when there are no queued events' do
+          it { expect(process_event).to be 0 }
+        end
+
+        context 'when there is one queued event' do
+          let(:event) { Ephesus::Core::Message.new }
+
+          before(:example) { subject.enqueue_event(event) }
+
+          context 'when the scene does not handle the event' do
+            let(:error_class) do
+              Ephesus::Core::Scenes::EventHandling::UnhandledEventError
+            end
+            let(:error_message) do
+              'no event handler found for event ephesus.core'
+            end
+
+            it 'should raise an exception' do
+              expect { process_event }
+                .to raise_error(error_class, error_message)
+            end
+          end
+
+          wrap_deferred 'when the scene handles the event' do
+            let(:event) { Spec::IncrementCommand::Event.new }
+
+            it { expect(process_event).to be 1 }
+
+            it 'should process the event' do
+              process_event
+
+              expect(processed_events).to be == [event]
+            end
+
+            it 'should update the state' do
+              process_event
+
+              expect(scene.state.get('value')).to be 1
+            end
+
+            it 'should remove the event from the queue', :aggregate_failures do
+              expect { process_event }.to(
+                change { scene.send(:event_queue).size }.by(-1)
+              )
+
+              expect(queued_events).to be == []
+            end
+          end
+        end
+
+        context 'when there are many queued events' do
+          let(:events) { Array.new(3) { Ephesus::Core::Message.new } }
+
+          before(:example) do
+            events.each { |event| subject.enqueue_event(event) }
+          end
+
+          context 'when the scene does not handle the event' do
+            let(:error_class) do
+              Ephesus::Core::Scenes::EventHandling::UnhandledEventError
+            end
+            let(:error_message) do
+              'no event handler found for event ephesus.core'
+            end
+
+            it 'should raise an exception' do
+              expect { process_event }
+                .to raise_error(error_class, error_message)
+            end
+          end
+
+          wrap_deferred 'when the scene handles the event' do
+            let(:events) { Array.new(3) { Spec::IncrementCommand::Event.new } }
+
+            it { expect(process_event).to be 1 }
+
+            it 'should process the event' do
+              process_event
+
+              expect(processed_events).to be == [events.first]
+            end
+
+            it 'should update the state' do
+              process_event
+
+              expect(scene.state.get('value')).to be 1
+            end
+
+            it 'should remove the event from the queue', :aggregate_failures do
+              expect { process_event }.to(
+                change { scene.send(:event_queue).size }.by(-1)
+              )
+
+              expect(queued_events).to be == events[1..]
+            end
+          end
+        end
+
+        context 'when the handled events push events onto the stack' do
+          let(:event) { Spec::MultiplyCommand::Event.new(amount: 3) }
+          let(:expected_events) do
+            [
+              Spec::MultiplyCommand::Event.new(amount: 3),
+              Spec::AddCommand::Event.new(amount: 2),
+              Spec::IncrementCommand::Event.new,
+              Spec::IncrementCommand::Event.new,
+              Spec::AddCommand::Event.new(amount: 2),
+              Spec::IncrementCommand::Event.new,
+              Spec::IncrementCommand::Event.new
+            ]
+          end
+
+          before(:example) { subject.enqueue_event(event) }
+
+          include_deferred 'when the scene handles the event'
+
+          include_deferred 'when the scene has initial state', value: 2
+
+          it { expect(process_event).to be expected_events.size }
+
+          it 'should process the event and all stacked events' do
+            process_event
+
+            expect(processed_events).to be == expected_events
+          end
+
+          it 'should update the state' do
+            process_event
+
+            expect(scene.state.get('value')).to be 6
+          end
+
+          it 'should remove the event from the queue', :aggregate_failures do
+            expect { process_event }.to(
+              change { scene.send(:event_queue).size }.by(-1)
+            )
+
+            expect(queued_events).to be == []
+          end
+        end
+      end
+
+      describe '#processing?' do
+        it { expect(subject.processing?).to be false }
       end
     end
   end

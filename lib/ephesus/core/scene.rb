@@ -6,6 +6,7 @@ require 'ephesus/core'
 require 'ephesus/core/messages/typing'
 require 'ephesus/core/messaging/publisher'
 require 'ephesus/core/scenes/event_handling'
+require 'ephesus/core/scenes/processing'
 require 'ephesus/core/scenes/side_effects'
 
 module Ephesus::Core
@@ -26,6 +27,7 @@ module Ephesus::Core
     include Ephesus::Core::Messages::Typing
     include Ephesus::Core::Messaging::Publisher
     include Ephesus::Core::Scenes::EventHandling
+    include Ephesus::Core::Scenes::Processing
     include Ephesus::Core::Scenes::SideEffects
 
     handle_event Ephesus::Core::Commands::ConnectActor,    force: true
@@ -38,10 +40,10 @@ module Ephesus::Core
     # @param [Hash] the initial state for the scene. Will be merged onto the
     #   defined default state, if any.
     def initialize(state: {})
-      @id          = SecureRandom.uuid_v7
-      @event_queue = []
-      @event_stack = []
-      @state       = build_state(state)
+      super()
+
+      @id    = SecureRandom.uuid_v7
+      @state = build_state(state)
     end
 
     # @return [String] a unique identifier for the scene.
@@ -52,31 +54,6 @@ module Ephesus::Core
 
     # @return [Hash] a JSON-compatible representating of the scene.
     def as_json = { 'id' => id, 'type' => type }
-
-    # Handles the next queued event.
-    #
-    # Finds and calls the event handler for the next queued event. That event
-    # may push additional events onto the event stack, in which case #call will
-    # continue to handle events until the event stack is empty.
-    #
-    # If the event queue is empty, does nothing.
-    #
-    # @return [self]
-    def call
-      event = event_queue.shift
-
-      return self unless event
-
-      handle_event(event)
-
-      handle_event(event) while (event = event_stack.pop)
-
-      self
-    end
-
-    # Adds the event to the event queue for the scene.
-    def enqueue_event(event) = event_queue << event
-    alias enqueue enqueue_event
 
     # @return [String] a human-readable representation of the scene.
     def inspect
@@ -89,10 +66,6 @@ module Ephesus::Core
     def type = self.class.type
 
     private
-
-    attr_reader :event_queue
-
-    attr_reader :event_stack
 
     def build_state(state)
       state       = tools.hash_tools.convert_keys_to_strings(state)
