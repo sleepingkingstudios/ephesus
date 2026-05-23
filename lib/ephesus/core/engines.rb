@@ -9,5 +9,6 @@ module Ephesus::Core
     autoload :Errors,               'ephesus/core/engines/errors'
     autoload :EventHandling,        'ephesus/core/engines/event_handling'
     autoload :SceneManagement,      'ephesus/core/engines/scene_management'
+    autoload :Synchronous,          'ephesus/core/engines/synchronous'
   end
 end

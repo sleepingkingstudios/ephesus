@@ -4,7 +4,7 @@ source 'https://rubygems.org'
 
 gemspec
 
-ruby '4.0.4'
+ruby '4.0.5'
 
 gem 'plumbum',
   git: 'https://github.com/sleepingkingstudios/plumbum'
