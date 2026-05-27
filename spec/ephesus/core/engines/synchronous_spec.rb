@@ -21,9 +21,7 @@ RSpec.describe Ephesus::Core::Engines::Synchronous do
 
   describe '#enqueue_event' do
     let(:event) { Ephesus::Core::Message.new }
-    let(:scene) do
-      Ephesus::Core::Scene.new
-    end
+    let(:scene) { Ephesus::Core::Scene.new }
 
     define_method :process_event do
       subject.send(:enqueue_event, event:, scene:)

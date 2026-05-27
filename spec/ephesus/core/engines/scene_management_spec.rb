@@ -30,6 +30,15 @@ RSpec.describe Ephesus::Core::Engines::SceneManagement do
       -> { be_a(Class).and(be < StandardError) }
   end
 
+  describe '.new' do
+    it 'should define the constructor' do
+      expect(described_class)
+        .to be_constructible
+        .with(0).arguments
+        .and_any_keywords
+    end
+  end
+
   include_deferred 'should subscribe to messages'
 
   include_deferred 'should implement the scene management interface'

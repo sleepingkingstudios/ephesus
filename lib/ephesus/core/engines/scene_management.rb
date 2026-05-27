@@ -176,7 +176,7 @@ module Ephesus::Core::Engines
       end
     end
 
-    def initialize
+    def initialize(**)
       super
 
       @scene_pools = initialize_scene_pools
