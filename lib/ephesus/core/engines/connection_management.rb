@@ -11,7 +11,7 @@ module Ephesus::Core::Engines
     # Exception raised when unable to add a connection.
     class ConnectionError < StandardError; end
 
-    def initialize
+    def initialize(**)
       super
 
       @actors      = {}

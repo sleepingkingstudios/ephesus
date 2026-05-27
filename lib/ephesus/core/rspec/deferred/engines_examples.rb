@@ -372,7 +372,11 @@ module Ephesus::Core::RSpec::Deferred
       describe '#enqueue_event' do
         let(:event) { Ephesus::Core::Message.new }
         let(:scene) do
-          instance_double(Ephesus::Core::Scene, enqueue_event: nil)
+          instance_double(
+            Ephesus::Core::Scene,
+            call:          nil,
+            enqueue_event: nil
+          )
         end
 
         it 'should delegate to the scene' do

@@ -882,6 +882,15 @@ module Ephesus::Core::RSpec::Deferred
     end
 
     deferred_examples 'should implement the event processing interface' do
+      describe '#call' do
+        it 'should define the method' do
+          expect(subject)
+            .to respond_to(:call)
+            .with(0).arguments
+            .and_keywords(:batch_size, :thread_safe)
+        end
+      end
+
       describe '#enqueue_event' do
         it { expect(subject).to respond_to(:enqueue_event).with(1).argument }
 
@@ -898,54 +907,16 @@ module Ephesus::Core::RSpec::Deferred
         include_examples 'should define private reader', :event_stack
       end
 
-      describe '#call' do
-        it 'should define the method' do
-          expect(subject)
-            .to respond_to(:call)
-            .with(0).arguments
-            .and_keywords(:batch_size, :thread_safe)
-        end
-      end
-
       describe '#processing?' do
         include_examples 'should define predicate', :processing?
+      end
+
+      describe '#queue_empty?' do
+        include_examples 'should define predicate', :queue_empty?
       end
     end
 
     deferred_examples 'should implement the event processing methods' do
-      describe '#enqueue_event' do
-        let(:event) { Ephesus::Core::Message.new }
-
-        define_method :queued_events do
-          queue  = subject.send(:event_queue)
-          events = []
-
-          events << queue.pop until queue.empty?
-
-          events
-        end
-
-        it 'should push the event onto the events queue', :aggregate_failures do
-          expect { subject.enqueue_event(event) }.to(
-            change { subject.send(:event_queue).size }.to(be 1)
-          )
-
-          expect(queued_events).to contain_exactly(event)
-        end
-      end
-
-      describe '#event_queue' do
-        it 'should return an empty queue' do
-          expect(subject.send(:event_queue))
-            .to be_a(Thread::Queue)
-            .and have_attributes(empty?: true)
-        end
-      end
-
-      describe '#event_stack' do
-        it { expect(subject.send(:event_stack)).to be == [] }
-      end
-
       describe '#call' do
         let(:options) { {} }
 
@@ -964,6 +935,12 @@ module Ephesus::Core::RSpec::Deferred
 
         context 'when there are no queued events' do
           it { expect(process_events).to be false }
+
+          it 'should empty the event queue' do
+            process_events
+
+            expect(subject.queue_empty?).to be true
+          end
         end
 
         context 'when there is one queued event' do
@@ -992,6 +969,7 @@ module Ephesus::Core::RSpec::Deferred
               change { scene.send(:event_queue).size }.by(-1)
             )
 
+            expect(subject.queue_empty?).to be true
             expect(queued_events).to be == []
           end
 
@@ -1017,6 +995,7 @@ module Ephesus::Core::RSpec::Deferred
                 change { scene.send(:event_queue).size }.by(-1)
               )
 
+              expect(subject.queue_empty?).to be true
               expect(queued_events).to be == []
             end
           end
@@ -1040,10 +1019,14 @@ module Ephesus::Core::RSpec::Deferred
               expect(scene.state.get('value')).to be nil
             end
 
-            it 'should not remove the event from the queue' do
+            it 'should not remove the event from the queue',
+              :aggregate_failures \
+            do
               expect { process_events }.not_to(
                 change { scene.send(:event_queue).size }
               )
+
+              expect(subject.queue_empty?).to be false
             end
           end
         end
@@ -1078,6 +1061,7 @@ module Ephesus::Core::RSpec::Deferred
               change { scene.send(:event_queue).size }.by(-1)
             )
 
+            expect(subject.queue_empty?).to be false
             expect(queued_events).to be == events[1..]
           end
 
@@ -1105,6 +1089,7 @@ module Ephesus::Core::RSpec::Deferred
                 change { scene.send(:event_queue).size }.by(-2)
               )
 
+              expect(subject.queue_empty?).to be false
               expect(queued_events).to be == events[2..]
             end
           end
@@ -1133,6 +1118,7 @@ module Ephesus::Core::RSpec::Deferred
                 change { scene.send(:event_queue).size }.by(-1)
               )
 
+              expect(subject.queue_empty?).to be false
               expect(queued_events).to be == events[1..]
             end
           end
@@ -1193,6 +1179,40 @@ module Ephesus::Core::RSpec::Deferred
             end
           end
         end
+      end
+
+      describe '#enqueue_event' do
+        let(:event) { Ephesus::Core::Message.new }
+
+        define_method :queued_events do
+          queue  = subject.send(:event_queue)
+          events = []
+
+          events << queue.pop until queue.empty?
+
+          events
+        end
+
+        it 'should push the event onto the events queue', :aggregate_failures do
+          expect { subject.enqueue_event(event) }.to(
+            change { subject.send(:event_queue).size }.to(be 1)
+          )
+
+          expect(subject.queue_empty?).to be false
+          expect(queued_events).to contain_exactly(event)
+        end
+      end
+
+      describe '#event_queue' do
+        it 'should return an empty queue' do
+          expect(subject.send(:event_queue))
+            .to be_a(Thread::Queue)
+            .and have_attributes(empty?: true)
+        end
+      end
+
+      describe '#event_stack' do
+        it { expect(subject.send(:event_stack)).to be == [] }
       end
 
       describe '#process_events' do
@@ -1776,6 +1796,10 @@ module Ephesus::Core::RSpec::Deferred
 
       describe '#processing?' do
         it { expect(subject.processing?).to be false }
+      end
+
+      describe '#queue_empty?' do
+        it { expect(subject.queue_empty?).to be true }
       end
     end
   end

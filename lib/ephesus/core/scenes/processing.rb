@@ -57,6 +57,8 @@ module Ephesus::Core::Scenes
     #   false.
     def processing? = @processing
 
+    def queue_empty? = event_queue.empty?
+
     private
 
     attr_reader :event_queue
