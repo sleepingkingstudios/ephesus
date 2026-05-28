@@ -41,43 +41,6 @@ RSpec.describe Ephesus::Core::Engines::ConnectionManagement do
 
   include_deferred 'should implement the connection management methods'
 
-  describe '#add_connection' do
-    let(:connection) do
-      Ephesus::Core::Connection.new(format: 'spec.format')
-    end
-
-    before(:example) do
-      allow(engine).to receive(:enqueue_event) # rubocop:disable RSpec/SubjectStub
-    end
-
-    context 'when the engine defines a default scene' do
-      let(:default_scene) { Ephesus::Core::Scene.new }
-      let(:connect_event) do
-        Ephesus::Core::Commands::ConnectActor::Event.new(connection.actor)
-      end
-
-      before(:example) do
-        scene = default_scene
-
-        described_class.define_method(:default_scene) { scene }
-      end
-
-      it 'should set the current scene for the actor' do
-        engine.add_connection(connection)
-
-        expect(connection.actor.current_scene).to be default_scene
-      end
-
-      it 'should enqueue a ConnectActor event' do
-        engine.add_connection(connection)
-
-        expect(engine) # rubocop:disable RSpec/SubjectStub
-          .to have_received(:enqueue_event)
-          .with(event: connect_event, scene: default_scene)
-      end
-    end
-  end
-
   describe '#build_actor' do
     let(:connection) { Ephesus::Core::Connection.new(format: 'spec.format') }
     let(:actor)      { subject.send(:build_actor, connection) }

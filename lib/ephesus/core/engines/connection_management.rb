@@ -18,39 +18,6 @@ module Ephesus::Core::Engines
       @connections = {}
     end
 
-    # Adds the connection to the engine.
-    #
-    # This method automatically generates an Actor for the connection using
-    # Engine#build_actor.
-    #
-    # @param [Ephesus::Core::Connection] the connection to add.
-    #
-    # @return [void]
-    def add_connection(connection) # rubocop:disable Metrics/MethodLength
-      if connection.actor
-        message =
-          "unable to add connection #{connection.inspect} - connection " \
-          'already has an actor'
-
-        raise ConnectionError, message
-      end
-
-      @connections[connection.id] = connection
-
-      connection.actor = build_actor(connection)
-
-      subscribe(
-        connection,
-        channel:     :events,
-        method_name: :handle_event
-      )
-
-      default_scene
-        &.then { |scene| add_actor_to_scene(actor: connection.actor, scene:) }
-
-      nil
-    end
-
     # Adds the actor to the specified scene.
     #
     # Enqueues a ConnectActor event for the scene. If the actor already belongs
@@ -71,6 +38,58 @@ module Ephesus::Core::Engines
       enqueue_event(event:, scene:)
 
       nil
+    end
+
+    # @overload connect(connection_class = Ephesus::Core::Connection, format:, **options)
+    #   Creates a connection and adds the connection to the engine.
+    #
+    #   The connection is initialized using the given connection class (or
+    #   Ephesus::Core::Connection by default), the given :format and options,
+    #   and any #connection_options defined by the engine. In case of a
+    #   conflict, options given override the engine's connection options.
+    #
+    #   Once the connection is created:
+    #
+    #   - The connection is added to engine.connections.
+    #   - The engine generates an actor using #build_actor and assigns it to the
+    #     connection.
+    #   - The engine subscribes to events from the connection on the :events
+    #     channel.
+    #   - If the engine defines a default scene, automatically adds the
+    #     connection to the default scene.
+    #
+    #   @param connection_class [Class] the class of connection to create.
+    #     Defaults to Ephesus::Core::Connection.
+    #   @param format [String, Symbol] the format for the connection.
+    #   @param options [Hash] additional options for the connection.
+    #
+    #   @return [Ephesus::Core::Connection] the generated connection.
+    def connect(
+      connection_class = Ephesus::Core::Connection,
+      format:,
+      **
+    )
+      connection_class
+        .new(format:, **connection_options, **)
+        .tap { |connection| add_connection(connection) }
+    end
+
+    # Removes the connection from the engine.
+    #
+    # If the connection actor belongs to a scene, removes the actor from the
+    # scene.
+    #
+    # @param [Ephesus::Core::Connection] the connection to remove.
+    #
+    # @return [Ephesus::Core::Connection] the removed connection.
+    def disconnect(connection)
+      remove_actor_from_scene(actor: connection.actor) if connection.actor
+
+      @connections.delete(connection.id)
+
+      unsubscribe(connection, channel: :events)
+
+      connection
     end
 
     # @private
@@ -98,33 +117,34 @@ module Ephesus::Core::Engines
       nil
     end
 
-    # Removes the connection from the engine.
-    #
-    # If the connection actor belongs to a scene, removes the actor from the
-    # scene.
-    #
-    # @param [Ephesus::Core::Connection] the connection to remove.
-    #
-    # @return [void]
-    def remove_connection(connection)
-      remove_actor_from_scene(actor: connection.actor) if connection.actor
-
-      @connections.delete(connection.id)
-
-      unsubscribe(connection, channel: :events)
-
-      nil
-    end
-
     private
 
     attr_reader :actors
 
     attr_reader :connections
 
+    def add_connection(connection)
+      @connections[connection.id] = connection
+
+      connection.actor = build_actor(connection)
+
+      subscribe(
+        connection,
+        channel:     :events,
+        method_name: :handle_event
+      )
+
+      default_scene
+        &.then { |scene| add_actor_to_scene(actor: connection.actor, scene:) }
+
+      nil
+    end
+
     def build_actor(_connection)
       Ephesus::Core::Actor.new
     end
+
+    def connection_options = {}
 
     def default_scene = nil
 
