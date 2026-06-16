@@ -6,10 +6,8 @@ gemspec
 
 ruby '4.0.5'
 
-gem 'async', '~> 2.39'
-
-gem 'plumbum',
-  git: 'https://github.com/sleepingkingstudios/plumbum'
+gem 'sleeping_king_studios-tools',
+  git: 'https://github.com/sleepingkingstudios/sleeping_king_studios-tools'
 
 group :development, :test do
   gem 'byebug', '~> 12.0'

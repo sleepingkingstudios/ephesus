@@ -13,8 +13,11 @@ module Ephesus::Core
     include Ephesus::Core::Messaging::Publisher
     include Ephesus::Core::Messaging::Subscriber
 
-    def initialize
-      @id = SecureRandom.uuid_v7
+    # @param user [true, false] true if the actor represents a huamn user of the
+    #   system; false if the actor represents an autonomous agent.
+    def initialize(user: true)
+      @id   = SecureRandom.uuid_v7
+      @user = !!user
     end
 
     # @return [Ephesus::Core::Scene] the current scene for the actor.
@@ -22,6 +25,10 @@ module Ephesus::Core
 
     # @return [String] a unique identifier for the actor.
     attr_reader :id
+
+    # @return [true, false] true if the actor represents an autonomous agent,
+    #   otherwise false.
+    def agent? = !@user
 
     # @return [Hash] a JSON-compatible representating of the actor.
     def as_json = { 'id' => id }
@@ -59,9 +66,14 @@ module Ephesus::Core
         .format_inspect(self, address: false, properties: properties_to_inspect)
     end
 
+    # @return [true, false] true if the actor represents a huamn user of the
+    #   system, otherwise false.
+    def user? = @user
+    alias user user?
+
     private
 
-    def properties_to_inspect = %i[id current_scene]
+    def properties_to_inspect = %i[id user current_scene]
 
     def tools = @tools ||= SleepingKingStudios::Tools::Toolbelt.instance
   end

@@ -6,7 +6,9 @@ require 'ephesus/core/rspec/deferred/messages_examples'
 RSpec.describe Ephesus::Core::Actor do
   include Ephesus::Core::RSpec::Deferred::MessagesExamples
 
-  subject(:actor) { described_class.new }
+  subject(:actor) { described_class.new(**constructor_options) }
+
+  let(:constructor_options) { {} }
 
   example_class 'Spec::Publisher' do |klass|
     klass.include Ephesus::Core::Messaging::Publisher
@@ -21,6 +23,31 @@ RSpec.describe Ephesus::Core::Actor do
   end
 
   include_deferred 'should subscribe to messages'
+
+  describe '.initialize' do
+    it 'should define the constructor' do
+      expect(described_class)
+        .to be_constructible
+        .with(0).arguments
+        .and_keywords(:user)
+    end
+  end
+
+  describe '#agent?' do
+    include_examples 'should define predicate', :agent?, false
+
+    context 'when initialized with user: false' do
+      let(:constructor_options) { super().merge(user: false) }
+
+      it { expect(actor.agent?).to be true }
+    end
+
+    context 'when initialized with user: true' do
+      let(:constructor_options) { super().merge(user: true) }
+
+      it { expect(actor.agent?).to be false }
+    end
+  end
 
   describe '#as_json' do
     let(:expected) { { 'id' => actor.id } }
@@ -98,8 +125,8 @@ RSpec.describe Ephesus::Core::Actor do
 
   describe '#inspect' do
     let(:expected) do
-      "#<#{described_class.name} id=#{actor.id.inspect} current_scene=" \
-        "#{actor.current_scene.inspect}>"
+      "#<#{described_class.name} id=#{actor.id.inspect} user=#{actor.user?} " \
+        "current_scene=#{actor.current_scene.inspect}>"
     end
 
     it { expect(actor.inspect).to be == expected }
@@ -110,6 +137,22 @@ RSpec.describe Ephesus::Core::Actor do
       before(:example) { actor.current_scene = scene }
 
       it { expect(actor.inspect).to be == expected }
+    end
+  end
+
+  describe '#user?' do
+    include_examples 'should define predicate', :user?, true
+
+    context 'when initialized with user: false' do
+      let(:constructor_options) { super().merge(user: false) }
+
+      it { expect(actor.user?).to be false }
+    end
+
+    context 'when initialized with user: true' do
+      let(:constructor_options) { super().merge(user: true) }
+
+      it { expect(actor.user?).to be true }
     end
   end
 end

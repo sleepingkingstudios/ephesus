@@ -30,10 +30,10 @@ Gem::Specification.new do |gem|
     '*.md'
   ]
 
+  gem.add_dependency 'async', '~> 2.39'
   gem.add_dependency 'cuprum', '~> 1.3', '>= 1.3.1'
+  gem.add_dependency 'plumbum', '~> 0.1'
   gem.add_dependency 'sleeping_king_studios-tools', '~> 1.3'
 
   gem.add_dependency 'observer', '< 1.0'
-
-  gem.add_dependency 'plumbum', '~> 0.1.0.alpha'
 end

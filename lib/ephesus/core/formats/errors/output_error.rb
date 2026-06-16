@@ -13,7 +13,7 @@ module Ephesus::Core::Formats::Errors
     # @param notification [Ephesus::Core::Message] the received output
     #   notification.
     # @param message [String] the message to display.
-    def initialize(message:, notification:)
+    def initialize(message:, notification:, **)
       @notification = notification
 
       super
